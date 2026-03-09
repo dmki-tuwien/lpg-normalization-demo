@@ -9,14 +9,24 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@blueprintjs/core": "^6.7.0",
     "next": "16.1.6",
-    "react": "19.2.3",
-    "react-dom": "19.2.3"
+    "react": "^18",
+    "react-dom": "^18",
+    "cytoscape": "~3.33",
+    "cytoscape-avsdf": "~1.0.0",
+    "cytoscape-cola": "^2.5.1",
+    "react-cytoscapejs": "~2.0",
+    "@mui/x-charts": "^8.0.0",
+    "@mui/material": "^7.3.9",
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1"
+
   },
   "devDependencies": {
     "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
     "babel-plugin-react-compiler": "1.0.0",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
