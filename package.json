@@ -10,10 +10,12 @@
   },
   "dependencies": {
     "@blueprintjs/core": "^6.7.0",
+    "@blueprintjs/select": "^6.1.0",
     "next": "16.1.6",
     "react": "^18",
     "react-dom": "^18",
     "cytoscape": "~3.33",
+    "cytoscape-automove": "^1.10.3",
     "cytoscape-avsdf": "~1.0.0",
     "cytoscape-cola": "^2.5.1",
     "react-cytoscapejs": "~2.0",

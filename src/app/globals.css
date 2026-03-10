@@ -60,3 +60,8 @@ footer {
   grid-column: 2;
   grid-row: 2;
 }
+
+.wrapper .bp6-overlay{
+  position: absolute;
+  top: 40px;
+}

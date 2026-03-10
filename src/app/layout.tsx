@@ -4,6 +4,7 @@ import "./globals.css";
 // using Node.js-style package resolution in a CSS file:
 import "normalize.css";
 import "@blueprintjs/core/lib/css/blueprint.css";
+import "@blueprintjs/select/lib/css/blueprint-select.css";
 // include blueprint-icons.css for icon font support
 import "@blueprintjs/icons/lib/css/blueprint-icons.css";
 

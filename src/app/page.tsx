@@ -2,26 +2,46 @@
 import {
     Alignment,
     AnchorButton,
-    Button, Card, H3, H4, H5, HTMLSelect, Label,
+    Button, Card, H3, H4, H5, HTMLSelect, Icon, Label, Link, MenuItem, MenuDivider, Menu,
     Navbar,
     NavbarDivider,
     NavbarGroup,
-    NavbarHeading, SegmentedControl,
-    TextArea
+    NavbarHeading, SegmentedControl, Text,
+    TextArea, Tooltip
 } from "@blueprintjs/core";
+import {ItemListRenderer, ItemPredicate, ItemRenderer, Select} from "@blueprintjs/select";
 import CytoscapeComponent from 'react-cytoscapejs';
 import cytoscape from 'cytoscape';
 import cola from 'cytoscape-cola';
+import automove from 'cytoscape-automove';
 import avsdf from 'cytoscape-avsdf';
 import { BarChart } from '@mui/x-charts/BarChart';
 
 
-import {useEffect, useState} from "react";
+import {useEffect, useRef, useState} from "react";
+import {getPath} from "@mui/system";
 
 cytoscape.use(cola);
 cytoscape.use(avsdf);
+cytoscape.use(automove)
 
+interface Dependency {
+    name: string;
+    category: string;
+    metrics: {[key: string]: number};
+}
 
+function prettyDep(text: string): string {
+    const arrowMap: Record<string, string> = {
+        '->': '→',
+        '<-': '←',
+        '=>': ' ⇒ ',
+        '-': '-',
+        '::': ' :: '
+    };
+
+    return text.replace(/->|<-|=>|-|::/g, (match) => arrowMap[match]);
+}
 
 export default function Home() {
     const [database, setDatabase] = useState("neo4j");
@@ -32,9 +52,10 @@ export default function Home() {
     const [perGraphMetricsAfter, setPerGraphMetricsAfter] = useState<{[key: string]: number}>({});
     const [perGraphMetricsBefore, setPerGraphMetricsBefore] = useState<{[key: string]: number}>({});
     const [perGraphMetricsGraphData, setPerGraphMetricsGraphData] = useState([]);
-    const [perDepMetricsAfter, setPerDepMetricsAfter] = useState<{[key: string]: number}>({});
-    const [perDepMetricsBefore, setPerDepMetricsBefore] = useState<{[key: string]: number}>({});
-
+    const [perDepMetricsAfter, setPerDepMetricsAfter] = useState<Array<Dependency>>([]);
+    const [perDepMetricsBefore, setPerDepMetricsBefore] = useState<Array<Dependency>>([]);
+    const [selectedPerDepMetric, setSelectedPerDepMetric] = useState<Dependency>({name: "", category: "", metrics: {}});
+   // const [s]
 
     const [availableScenarios, setAvailableScenarios] = useState([]);
     const [scenario, setScenario] = useState("");
@@ -137,7 +158,15 @@ export default function Home() {
 
                     const data = await response.json();
 
-                    setPerDepMetricsBefore(data)
+                    const mappedData = Object.entries(data).map(([name, metrics]) => ({
+                        name,
+                        category: "Before Normalization",
+                        metrics,
+                    }))
+
+                    setPerDepMetricsBefore(mappedData)
+
+                    setSelectedPerDepMetric(mappedData[0])
                 }
                 if (hasBeenNormalized) {
                     const response = await fetch(`http://localhost:8000/${database}/statistics/dependencies`,  { method: "POST", headers: {
@@ -146,7 +175,13 @@ export default function Home() {
                     if (!response.ok) throw new Error("Failed to fetch");
 
                     const data = await response.json();
-                    setPerDepMetricsAfter(data)
+                    const mappedData = Object.entries(data).map(([name, metrics]) => ({
+                        name,
+                        category: "After Normalization",
+                        metrics,
+                    }))
+
+                    setPerDepMetricsAfter(mappedData)
                 }
 
 
@@ -227,6 +262,8 @@ export default function Home() {
         setLoadedScenario(false);
         setPerGraphMetricsAfter([]);
         setPerGraphMetricsBefore([]);
+        setPerDepMetricsAfter([]);
+        setPerDepMetricsBefore([]);
         setHasBeenNormalized(false);
         setNormalizationResult([[],[]]);
         await fetch(`http://localhost:8000/reset`, { method: "POST" });
@@ -234,25 +271,176 @@ export default function Home() {
 
     const GraphView = ({ nodes = [], edges = []}) => {
         // 1. Define your graph data (Elements)
+        let elements = null;
+        if (nodes.length < 50) {
+            let cy_nodes = nodes.map(node => ({
+                data: {
+                    id: "n" + String(node.id),
+                    label: node.labels.join("&"),
+                    type: node.labels[0],
+                    classes: "node"
+                }
+            }));
+            let cy_edge_nodes = edges.map(edge => ({
+                data: {
+                    id: "n" + String(edge.src) + String(edge.tgt),
+                    label: edge.labels[0],
+                    type: edge.labels[0],
 
-        const cy_nodes = nodes.map(node => ({
-            data: {
-                id: "n"+String(node.id),
-                label: node.labels.join("&"), // Use the first label as the display text
-                type: node.labels[0]   // Useful for styling different node types later
+                },
+                classes: "reified_edge"
+            }));
+            let cy_edges1 = edges.map(edge => ({
+                data: {
+                    id: "eSRC" + String(edge.id),
+                    source: "n" + String(edge.src),
+                    target: "n" + String(edge.src) + String(edge.tgt),
+                    label: edge.labels[0],
+                    type: "SRC" + edge.labels[0],
+                },
+                classes: "src"
+            }));
+            let cy_edges2 = edges.map(edge => ({
+                data: {
+                    id: "eTGT" + String(edge.id),
+                    source: "n" + String(edge.src) + String(edge.tgt),
+                    target: "n" + String(edge.tgt),
+                    label: edge.labels[0],
+                    type: "TGT" + edge.labels[0],
+                },
+                classes: "tgt"
+            }));
+
+            elements = [...cy_nodes, ...cy_edge_nodes, ...cy_edges1, ...cy_edges2];
+
+            nodes.forEach((node) => {
+                Object.entries(node.properties).forEach(([key, value]) => {
+                    elements.push({
+                        data: {
+                            id: `${"n" + String(node.id)}_${key}`,
+                            label: `${key}: ${value}`,
+                            parent: "n" + String(node.id) // This nests it inside the parent
+                        },
+                        classes: 'property'
+                    });
+                });
+            });
+
+            edges.forEach((edge) => {
+                Object.entries(edge.properties).forEach(([key, value]) => {
+                    elements.push({
+                        data: {
+                            id: `${"n" + String(edge.src) + String(edge.tgt)}_${key}`,
+                            label: `${key}: ${value}`,
+                            parent: "n" + String(edge.src) + String(edge.tgt) // This nests it inside the parent
+                        },
+                        classes: 'property'
+                    });
+                });
+            });
+
+        } else {
+            const cy_nodes = nodes.map(node => ({
+                data: {
+                    id: "n"+String(node.id),
+                    label: node.labels.join("&"), // Use the first label as the display text
+                    type: node.labels[0]   // Useful for styling different node types later
+                }
+            }));
+            const cy_edges = edges.map(edge => ({
+                data: {
+                    id: "e"+String(edge.id), // Ensure edge IDs are unique strings
+                    source: "n"+String(edge.src), // Cytoscape IDs must be strings
+                    target: "n"+String(edge.tgt),
+                    label: edge.labels[0] // There is always only one type!
+                }
+            }));
+
+            elements = [...cy_nodes, ...cy_edges];
+        }
+
+        const cyRef = useRef<cytoscape.Core | null>(null);
+        const automoveRuleRef = useRef(null);
+
+        useEffect(() => {
+            const cy = cyRef.current;
+            if (!cy) return;
+
+            if (nodes.length < 50) {
+                // 1. Define the Automove Rule FIRST
+                // This ensures it catches the movement from the layout
+                automoveRuleRef.current = cy.automove({
+                    nodesMatching: '.reified_edge',
+                    reposition: 'mean',
+// This tells each reified edge node to stay in the middle
+                    // of its connected Course/Lecturer nodes
+                    when: "manual"
+                });
+
+                // 2. Run the Main Layout (AVSDF/Circle)
+                if (nodes.length < 50) {
+                    const topLevelNodes = cy.nodes().filter(n => n.parent().length === 0);
+
+                    // 2. We also need the edges connecting these top-level entities
+                    const layoutCollection = topLevelNodes.union(topLevelNodes.connectedEdges());
+                    const mainLayout = layoutCollection.layout({
+                        name: 'avsdf',
+                        nodeSeparation: 900/nodes.length,
+                        animate: true, // Animation helps automove "see" the shift
+                        refresh: 10,   // Frequent updates for smoothness
+                        fit: true
+                    });
+
+                    mainLayout.promiseOn('layoutstop').then(() => {
+                        // 3. Stack the Properties
+                        cy.nodes(':parent').forEach(parent => {
+                            const children = parent.children();
+                            if (children.length > 0) {
+                                children.layout({
+                                    name: 'grid',
+                                    cols: 1,
+                                    condense: true,
+                                    fit: false,
+                                    padding: 10,
+                                    boundingBox: {
+                                        x1: parent.position('x') - 100,
+                                        x2: parent.position('x') + 100,
+                                        y1: parent.position('y') - (children.length * 20)+30,
+                                        y2: parent.position('y') + (children.length * 20)
+                                    }
+                                }).run();
+                            }
+                        });
+
+                    });
+
+                    mainLayout.run();
+                    if (automoveRuleRef.current) {
+                        automoveRuleRef.current.apply();
+                    }
+                    setTimeout(() => {
+                        automoveRuleRef.current.apply();
+                        cy.fit(); // Optional: re-center view
+                        cy.style().update();
+
+                    }, 100);
+
+                }
+            } else {
+                cy.layout({
+                    name: 'circle',
+                    animate: false,
+                    fit: true
+                }).run();
             }
-        }));
-        const cy_edges = edges.map(edge => ({
-            data: {
-                id: "e"+String(edge.id), // Ensure edge IDs are unique strings
-                source: "n"+String(edge.src), // Cytoscape IDs must be strings
-                target: "n"+String(edge.tgt),
-                label: edge.labels[0] // There is always only one type!
-            }
-        }));
 
-        const elements = [...cy_nodes, ...cy_edges];
+            // Initialize automove
+            // This example makes nodes with class 'follower' move with 'leader'
 
+            return () => {
+                if (automoveRuleRef.current) automoveRuleRef.current.destroy();
+            };
+        }, [elements]);
 
         // 2. Define visual styles
         const stylesheet = [
@@ -260,27 +448,85 @@ export default function Home() {
                 selector: 'node',
                 style: {
                     'label': 'data(label)',
+                    'background-color': '#FBB360',
+                    'border-width': 1,
+                    'border-color': '#935610',
+                }
+            },
+            {
+                selector: '.property',
+                style: {
+                    'shape': 'rectangle',
+                    'height': 9,          // Height of your "list item"
+                    'background-color': '#ffffff',
+                    'background-opacity': 0,
+                    'border-width': 0,
                     'text-valign': 'center',
-                    'text-halign': 'center',
+                    'font-size': '10px',
+                    'label': 'data(label)',
+                    'text-margin-y': 22,
+                    'grabbable': false,
+                    'selectable': false
+                },
+
+            },
+            {
+                selector: '.node',
+                style: {
+                    'text-valign': 'top',
+                    'background-color': '#FBB360',
+                    'border-width': 1,
+                    'border-color': '#935610',
+                    'shape': 'round-rectangle',
                 }
             },
             {
                 selector: 'edge',
                 style: {
-                    'width': 3,
-                    'line-color': '#5F6B7C',
-                    'target-arrow-color': '#5F6B7C',
+                    'width': 2,
+                    'line-color': '#738091',
+                    'target-arrow-color': '#738091',
                     'target-arrow-shape': 'triangle',
                     'curve-style': 'bezier'
                 }
-            }
+            },
+            {
+                selector: '.src',
+                style: {
+                    'target-arrow-shape': 'none',
+                }
+            },
+            {
+                selector: '.tgt',
+                style: {
+                    'target-arrow-scale': 4,
+                }
+            },
+
+            {
+                selector: ':parent',
+                style: {
+                    'background-color': '#FBB360',
+                    'border-width': 1,
+                    'border-color': '#935610',
+                    'corner-radius': 15,
+                    'shape': 'round-rectangle',
+                    'text-margin-y': 24,
+                }
+            },
+            {
+                selector: '.reified_edge',
+                style: {
+                    'border-color': '#738091',
+                    'background-color': '#ffffff',
+                    'width': '0.1px',
+                    'height': '0.1px',
+                    'grabbable': false,
+                    "selectable": false,
+                }
+            },
         ];
 
-        let layoutName = "cola";
-
-        if (nodes.length > 20) {
-            layoutName = "circle";
-        }
 
         return (
             <div>
@@ -288,10 +534,35 @@ export default function Home() {
                     elements={elements}
                     style={{ width: '100%', height: '50em' }}
                     stylesheet={stylesheet}
-                    layout={{ name: layoutName, animate: false }}
+                    cy={(cy) => { cyRef.current = cy;}}
+                    layout={{ name: 'null' }}
                 />
             </div>
         );
+    };
+
+    const renderDependencyList: ItemListRenderer<Dependency> = ({ items, itemsParentRef, renderItem }) => {
+        let lastCategory = "";
+        let menuItems = [];
+        if (items.length > 0) {
+            menuItems = items.map((dependency, index) => {
+                const elements = [];
+
+                // If category changes, push a Divider/Header
+                if (dependency.category !== lastCategory) {
+                    elements.push(
+                        <MenuDivider key={`header-${dependency.category}`} title={dependency.category} />
+                    );
+                    lastCategory = dependency.category;
+                }
+
+                elements.push(renderItem(dependency, index));
+                return elements;
+            });
+        }
+
+
+        return <Menu ulRef={itemsParentRef}>{menuItems}</Menu>;
     };
 
     return (
@@ -299,21 +570,23 @@ export default function Home() {
         <nav>
             <Navbar fixedToTop>
                 <NavbarGroup align={Alignment.START}>
-                    <NavbarHeading>LPG Normalization</NavbarHeading>
+                    <NavbarHeading>LPG-Norm</NavbarHeading>
                     <NavbarDivider/>
-                    <Button className="bp6-minimal" icon="reset" text="Reset" onClick={() => reset()} />
+                    <Button className="bp6-minimal" icon="reset" text="Reset" type="reset" onClick={() => reset()} /><Tooltip content="Resets Neo4j, Memgraph, and this application."><Icon icon="small-info-sign" />
+                </Tooltip>
                 </NavbarGroup>
                 <NavbarGroup align={Alignment.END}>
-                    <AnchorButton className="bp6-minimal" icon="help" text="Documentation" href="https://dmki-tuwien.github.io/lpg-normalization" target="_blank"/>
+                    <AnchorButton className="bp6-minimal" endIcon="share" text="Open documentation" href="https://dmki-tuwien.github.io/lpg-normalization" target="_blank"/>
                 </NavbarGroup>
             </Navbar>
         </nav>
         <main>
             <div className="wrapper" id="scenarios">
                 <Card>
-                    <H3>Scenario</H3>
-                    <Label>Database
+                    <H3>Configuration</H3>
+                    <Label>Graph store
                     <SegmentedControl
+                        id="select-database"
                         options={[
                             {
                                 label: "Neo4j",
@@ -331,10 +604,20 @@ export default function Home() {
                     />
                     </Label>
 
-                    <Label>Scenario
-                        <HTMLSelect id="Scenario" disabled={isLoadingScenario || loadedScenario} options={availableScenarios} onChange={(e) => setScenario(e.currentTarget.value)} value={scenario}>Scenario</HTMLSelect>
-                    </Label>
-                    <Button icon="import" fill={true} loading={isLoadingScenario} disabled={loadedScenario} onClick={() => load_scenario()}>Load</Button>
+                    <div>
+                        <Label>
+                            <div style={{width: "fit-content", display: 'flex', alignItems: 'center'}}>
+                                <Tooltip content="A normalization scenario combines a graph loaded into a graph store with a set of dependencies.">
+                                    <span>Scenario <Icon icon="small-info-sign" />
+                                    </span>
+                                </Tooltip>
+                                <span>&nbsp;</span>
+                                <Tooltip content="External link: Details on the available scenarios"><Link href="https://dmki-tuwien.github.io/" target="_blank"> <Icon icon="share" size={12}/> </Link></Tooltip>
+                            </div>
+                        <HTMLSelect id="select-scenario" disabled={isLoadingScenario || loadedScenario} options={availableScenarios} onChange={(e) => setScenario(e.currentTarget.value)} value={scenario}>Scenario</HTMLSelect>
+                        </Label>
+                    </div>
+                    <Button id="button-load" icon="import" fill={true} loading={isLoadingScenario} disabled={loadedScenario} onClick={() => load_scenario()}>Load</Button>
                     <br/>
                     <div hidden={!loadedScenario} >
                     <Button  icon="play" fill={true} disabled={hasBeenNormalized} loading={isNormalizing} text="Normalize" onClick={() => normalize()} />
@@ -346,23 +629,47 @@ export default function Home() {
                 <H3>Dependencies and Transformations</H3>
                     <div>
                         <H4>Before Normalization</H4>
-                    <Label>All
-                    <TextArea disabled={hasBeenNormalized || isNormalizing} value={dependencies.join("\n")}></TextArea></Label>
 
+                        <Label><div style={{width: "fit-content", display: 'flex', alignItems: 'center'}}>
+                            <Tooltip content="The original set of dependencies as provided by the definition of the selected scenario.">
+                                    <span>Provided dependencies <Icon icon="small-info-sign" />
+                                    </span>
+                            </Tooltip>
+                             
+                            <Tooltip content="External link: Definition of the syntax used to formulate dependencies."><Link href="https://dmki-tuwien.github.io/" target="_blank"> <Icon icon="share" size={12}/> </Link></Tooltip>
+                        </div>
+                            <ul>
+
+                                {dependencies.map((dep, index) => (
+                                    <li key={index}>{prettyDep(dep)}</li>
+                                ))}
+
+                            </ul></Label>
                         <Label>Minimal Cover
                         <TextArea disabled={hasBeenNormalized || isNormalizing} value={minCov.join("\n")}></TextArea></Label>
+                        <Button>Edit minimal cover</Button>
                     </div>
                     <div hidden={!hasBeenNormalized}>
                         <H4>After Normalization</H4>
-                        <Label>Dependencies<br/>
+                        <Label><div style={{width: "fit-content", display: 'flex', alignItems: 'center'}}><Tooltip content="As part of the normalization process, the dependencies of the minimal cover have been transformed.">
+                                    <span>Transformed dependencies <Icon icon="small-info-sign" />
+                                    </span>
+                        </Tooltip></div>
                             <ul>
 
                                     {normalizationResult[0].map((dep, index) => (
-                                        <li key={index}>{dep}</li>
+                                        <li key={index}>{prettyDep(dep)}</li>
                                     ))}
 
                             </ul></Label>
-                        <Label>Applied Transformations
+                        <Label><div style={{width: "fit-content", display: 'flex', alignItems: 'center'}}>
+                            <Tooltip content="Lists the transformations applied as part of the normalization process.">
+                                    <span>Applied transformations <Icon icon="small-info-sign" />
+                                    </span>
+                            </Tooltip>
+                             
+                            <Tooltip content="External link: Definitions of the transformations that can be performed during normalization."><Link href="https://dmki-tuwien.github.io/" target="_blank"> <Icon icon="share" size={12}/> </Link></Tooltip>
+                        </div>
                             <ul>
 
                                 {normalizationResult[1].map((transf, index) => (
@@ -377,7 +684,11 @@ export default function Home() {
             <div className="wrapper" id="metrics">
                 <Card hidden={!loadedScenario}>
                     <H3>Metrics</H3>
-                    <H4>Per-graph Metrics</H4>
+                    <H4>Per-graph Metrics 
+                        <Tooltip content="Metrics that are calculated before and after normalization on the whole graph of the loaded scenario."><Icon icon="small-info-sign"/></Tooltip>
+                         
+                        <Tooltip content="External link: Metric definitions"><Link href="https://dmki-tuwien.github.io/" target="_blank"> <Icon icon="share" size={12}/> </Link></Tooltip>
+                    </H4>
                     <BarChart
                         dataset={perGraphMetricsGraphData}
 
@@ -425,46 +736,94 @@ export default function Home() {
 
 
                 <div>
-                    <H4>Per-dependency Metrics</H4>
-                        <H5>Before Normalization</H5>
-
-                        <ul>
-                            {Object.entries(perDepMetricsBefore).map(([key, value]) => (
-                                <li><b>{key}</b>
-                                    <ul>
-                                        {Object.entries(value).map(([key2, value2]) => (
-                                            <li><b>{key2}: </b>{value2}</li>
-                                        ))}
-                                    </ul>
-                                </li>
-                            ))}
-                        </ul>
+                    <H4>Per-dependency Metrics 
+                        <Tooltip content="Metrics that are calculated before and after normalization on each dependency of the loaded scenario."><Icon icon="small-info-sign"/></Tooltip>
+                         
+                        <Tooltip content="External link: Metric definitions"><Link href="https://dmki-tuwien.github.io/" target="_blank"> <Icon icon="share" size={12}/> </Link></Tooltip>
+                    </H4>
+                    <div>
+                        <Label>Dependency
+                        <div style={{ position: "relative" }}>
+                        <Select<Dependency>
+                            filterable={false}
+                            fill={true}
+                            items={perDepMetricsBefore.concat(perDepMetricsAfter)}
+                            itemRenderer={(dependency, { handleClick }) => (
+                                <MenuItem
+                                    active={selectedPerDepMetric?.name === dependency.name}
+                                    key={dependency.name}
+                                    onClick={handleClick}
+                                    text={prettyDep(dependency.name)}
+                                />
+                            )}
+                            popoverProps={{
+                                placement: "bottom",
+                            }}
+                            itemListRenderer={renderDependencyList}
+                            onItemSelect={(dependency) => setSelectedPerDepMetric(dependency)}
+                            itemsEqual="name"
+                        >
+                            <Button fill={true} alignText={"left"} text={<Text ellipsize={true} tagName="div" style={{ maxWidth: "310px" }}>{prettyDep(selectedPerDepMetric.name)}</Text>} endIcon="double-caret-vertical"></Button>
+                        </Select>
+                        </div>
+                        </Label>
+                        <BarChart
+                            dataset={Object.entries(selectedPerDepMetric.metrics).map(([label, value]) => ({
+                                label,
+                                value,
+                            }))}
+                            hideLegend={true}
+                            xAxis={[
+                                {
+                                    id: 'categories',
+                                    scaleType: 'band',
+                                    label: "Metric",
+                                    dataKey: 'label',
+                                    valueFormatter: (label, context) => {
+                                        if (context.location === 'tick') {
+                                            if (label.length > 10) {
+                                                return `${label.slice(0, 7)}…`
+                                            }
+                                            return label
+                                        } else {
+                                            return label;
+                                        }
+                                    }
+                                },
+                            ]}
+                            yAxis={[
+                                {
+                                    scaleType: 'symlog',
+                                    label: 'Value (Symlog Scale)',
+                                },
+                            ]}
+                            series={[
+                                {
+                                    dataKey: 'value',
+                                    label: 'Value',
+                                    color: '#1C6E42',
+                                    valueFormatter: (value) => (value ?? 0).toString(),
+                                },
+                            ]}
+                            height={300}
+                        />
                     </div>
-                    <div hidden={!hasBeenNormalized}>
-                        <H5>After Normalization</H5>
+                </div>
 
-                        <ul>
-                            {Object.entries(perDepMetricsAfter).map(([key, value]) => (
-                                <li><b>{key}</b>
-                                    <ul>
-                                        {Object.entries(value).map(([key2, value2]) => (
-                                            <li><b>{key2}: </b>{value2}</li>
-                                        ))}
-                                    </ul>
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
                 </Card>
             </div>
             <div className="wrapper" id="visualization">
             <div hidden={!loadedScenario}>
                 <Card >
+                    <H3>Original Graph</H3>
+
                     {beforeVisualization}
                 </Card>
             </div>
             <div hidden={!hasBeenNormalized}>
                 <Card >
+                    <H3>Normalized Graph</H3>
+
                     {afterVisualization}
                 </Card>
             </div>
