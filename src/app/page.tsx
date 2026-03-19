@@ -7,7 +7,7 @@ import {
     NavbarDivider,
     NavbarGroup,
     NavbarHeading, SegmentedControl, Text,
-    TextArea, Tooltip
+    TextArea, Tooltip, Dialog, DialogBody, DialogFooter, ButtonGroup
 } from "@blueprintjs/core";
 import {ItemListRenderer, ItemPredicate, ItemRenderer, Select} from "@blueprintjs/select";
 import CytoscapeComponent from 'react-cytoscapejs';
@@ -15,15 +15,19 @@ import cytoscape from 'cytoscape';
 import cola from 'cytoscape-cola';
 import automove from 'cytoscape-automove';
 import avsdf from 'cytoscape-avsdf';
+import fcose from 'cytoscape-fcose';
 import { BarChart } from '@mui/x-charts/BarChart';
+import logo from '../../public/logo.png';
 
 
 import {useEffect, useRef, useState} from "react";
-import {getPath} from "@mui/system";
+import {string} from "prop-types";
+import Image from "next/image";
 
 cytoscape.use(cola);
 cytoscape.use(avsdf);
 cytoscape.use(automove)
+cytoscape.use(fcose)
 
 interface Dependency {
     name: string;
@@ -37,10 +41,13 @@ function prettyDep(text: string): string {
         '<-': '←',
         '=>': ' ⇒ ',
         '-': '-',
-        '::': ' :: '
+        '::': ' :: ',
+        ':': ' : ',
+        '&': ' & ',
+        ',': ' , '
     };
 
-    return text.replace(/->|<-|=>|-|::/g, (match) => arrowMap[match]);
+    return text.replace(/->|<-|=>|-|::|:|&|,/g, (match) => arrowMap[match]);
 }
 
 export default function Home() {
@@ -69,6 +76,8 @@ export default function Home() {
     const [beforeVisualization, setBeforeVisualization] = useState(<div/>);
     const [afterVisualization, setAfterVisualization] = useState(<div/>);
 
+    const [dependencyDialogOpen, setDependencyDialogOpen] = useState<boolean>(false);
+
     useEffect(() => {
         const fetchScenarios = async () => {
             try {
@@ -78,7 +87,8 @@ export default function Home() {
                 const data = await response.json();
                 const options = data.map((item: any) => ({
                     label: item.name || item,
-                    value: item.id || item
+                    value: item.id || item,
+                    category: item.category || item
                 }));
 
                 setAvailableScenarios(options);
@@ -228,8 +238,14 @@ export default function Home() {
             const nodes = await nodes_res.json();
             const edges_res = await fetch(`http://localhost:8000/${database}/visualize/edges`);
             const edges = await edges_res.json();
+            const deps_res = await fetch(`http://localhost:8000/${database}/visualize/dependencies`,  { method: "POST", headers: {
+                    "Content-Type": "application/json",
+                }, body: JSON.stringify(minCov) });
+            const deps = await deps_res.json();
 
-            setBeforeVisualization(<GraphView nodes={nodes} edges={edges}></GraphView>)
+            if (!response.ok) throw new Error("Failed to fetch");
+
+            setBeforeVisualization(<GraphView nodes={nodes} edges={edges} deps={deps}></GraphView>)
 
             setLoadedScenario(true);
         } catch (error) {
@@ -250,8 +266,12 @@ export default function Home() {
         const nodes = await nodes_res.json();
         const edges_res = await fetch(`http://localhost:8000/${database}/visualize/edges`);
         const edges = await edges_res.json();
+        const deps_res = await fetch(`http://localhost:8000/${database}/visualize/dependencies`,  { method: "POST", headers: {
+                "Content-Type": "application/json",
+            }, body: JSON.stringify(data[0])});
+        const deps = await deps_res.json();
 
-        setAfterVisualization(<GraphView nodes={nodes} edges={edges}></GraphView>)
+        setAfterVisualization(<GraphView nodes={nodes} edges={edges} deps={deps}></GraphView>)
 
         setHasBeenNormalized(true);
         setIsNormalizing(false);
@@ -269,9 +289,12 @@ export default function Home() {
         await fetch(`http://localhost:8000/reset`, { method: "POST" });
     };
 
-    const GraphView = ({ nodes = [], edges = []}) => {
+    const GraphView = ({ nodes = [], edges = [], deps = []}) => {
         // 1. Define your graph data (Elements)
         let elements = null;
+        console.log(deps);
+        console.log("bäs")
+
         if (nodes.length < 50) {
             let cy_nodes = nodes.map(node => ({
                 data: {
@@ -283,7 +306,7 @@ export default function Home() {
             }));
             let cy_edge_nodes = edges.map(edge => ({
                 data: {
-                    id: "n" + String(edge.src) + String(edge.tgt),
+                    id: "re" + String(edge.id),
                     label: edge.labels[0],
                     type: edge.labels[0],
 
@@ -294,7 +317,7 @@ export default function Home() {
                 data: {
                     id: "eSRC" + String(edge.id),
                     source: "n" + String(edge.src),
-                    target: "n" + String(edge.src) + String(edge.tgt),
+                    target: "re" + String(edge.id),
                     label: edge.labels[0],
                     type: "SRC" + edge.labels[0],
                 },
@@ -303,7 +326,7 @@ export default function Home() {
             let cy_edges2 = edges.map(edge => ({
                 data: {
                     id: "eTGT" + String(edge.id),
-                    source: "n" + String(edge.src) + String(edge.tgt),
+                    source: "re" + String(edge.id),
                     target: "n" + String(edge.tgt),
                     label: edge.labels[0],
                     type: "TGT" + edge.labels[0],
@@ -313,11 +336,13 @@ export default function Home() {
 
             elements = [...cy_nodes, ...cy_edge_nodes, ...cy_edges1, ...cy_edges2];
 
+
+
             nodes.forEach((node) => {
                 Object.entries(node.properties).forEach(([key, value]) => {
                     elements.push({
                         data: {
-                            id: `${"n" + String(node.id)}_${key}`,
+                            id: `n${String(node.id)}_${key}`,
                             label: `${key}: ${value}`,
                             parent: "n" + String(node.id) // This nests it inside the parent
                         },
@@ -327,17 +352,38 @@ export default function Home() {
             });
 
             edges.forEach((edge) => {
-                Object.entries(edge.properties).forEach(([key, value]) => {
+                let entry = Object.entries(edge.properties).forEach(([key, value]) => {
                     elements.push({
                         data: {
-                            id: `${"n" + String(edge.src) + String(edge.tgt)}_${key}`,
+                            id: `${"re" + String(edge.id)}_${key}`,
                             label: `${key}: ${value}`,
-                            parent: "n" + String(edge.src) + String(edge.tgt) // This nests it inside the parent
+                            parent: "re" + String(edge.id) // This nests it inside the parent
                         },
                         classes: 'property'
                     });
                 });
+                console.log(entry);
+                return entry;
             });
+
+            deps.forEach((edge) => {
+                elements.push({
+                    data: {
+                        id: "DEP" + String(edge[0])+ String(edge[1]),
+                        source: String(edge[0]),
+                        target: String(edge[1]),
+                        type: "DEP",
+                    },
+                    classes: "dep"
+                });
+            });
+
+
+
+            console.log(elements);
+
+
+
 
         } else {
             const cy_nodes = nodes.map(node => ({
@@ -359,73 +405,84 @@ export default function Home() {
             elements = [...cy_nodes, ...cy_edges];
         }
 
+        const structuralElements = elements.filter(el => el.classes !== 'dep');
+        const depElements = elements.filter(el => el.classes === 'dep');
+
         const cyRef = useRef<cytoscape.Core | null>(null);
         const automoveRuleRef = useRef(null);
+
+        const [showGraph, setShowGraph] = useState(1);
+        const [showDeps, setShowDeps] = useState(true);
 
         useEffect(() => {
             const cy = cyRef.current;
             if (!cy) return;
 
+            cy.elements().remove();
+            cy.add(structuralElements);
+
+            let count = showGraph;
+
             if (nodes.length < 50) {
                 // 1. Define the Automove Rule FIRST
                 // This ensures it catches the movement from the layout
-                automoveRuleRef.current = cy.automove({
-                    nodesMatching: '.reified_edge',
-                    reposition: 'mean',
-// This tells each reified edge node to stay in the middle
-                    // of its connected Course/Lecturer nodes
-                    when: "manual"
-                });
 
-                // 2. Run the Main Layout (AVSDF/Circle)
-                if (nodes.length < 50) {
-                    const topLevelNodes = cy.nodes().filter(n => n.parent().length === 0);
 
-                    // 2. We also need the edges connecting these top-level entities
-                    const layoutCollection = topLevelNodes.union(topLevelNodes.connectedEdges());
-                    const mainLayout = layoutCollection.layout({
-                        name: 'avsdf',
-                        nodeSeparation: 900/nodes.length,
-                        animate: true, // Animation helps automove "see" the shift
-                        refresh: 10,   // Frequent updates for smoothness
-                        fit: true
-                    });
+                const layout = cy.layout({
+                    name: 'fcose',
+                    idealEdgeLength: 150,      // Much longer edges
+                    nodeRepulsion: 15000,       // Stronger pushing force
+                    edgeElasticity: 0.1,       // Softer edges that allow more space
+                    gravity: 0.01,
+                    gravityRange: 4.0,
+                    randomize: true,
+                    animate: true,
+                    allowGraphExpansion: true,   // Allow the viewport to grow
+                    nodeDimensionsIncludeLabels: true, // Accounts for the text/labels
+                    uniformNodeDimensions: false,      // Important because your nodes vary in size
+                    numIter: 5000,              // More iterations for a more "relaxed" final state
+                    stop: () => {
+                        // 3. THE MAGIC STEP: Add the dependencies only AFTER the layout is finished
+                        // Since the layout is already 'stopped', these edges won't pull nodes around.
+                        if (showDeps) {
+                            cy.add(depElements);
+                        }
 
-                    mainLayout.promiseOn('layoutstop').then(() => {
-                        // 3. Stack the Properties
+                        // 4. Run your internal property grid layout
                         cy.nodes(':parent').forEach(parent => {
                             const children = parent.children();
                             if (children.length > 0) {
                                 children.layout({
                                     name: 'grid',
                                     cols: 1,
-                                    condense: true,
                                     fit: false,
-                                    padding: 10,
                                     boundingBox: {
-                                        x1: parent.position('x') - 100,
-                                        x2: parent.position('x') + 100,
-                                        y1: parent.position('y') - (children.length * 20)+30,
-                                        y2: parent.position('y') + (children.length * 20)
+                                        x1: parent.position('x') - 75,
+                                        x2: parent.position('x') + 75,
+                                        y1: parent.position('y') - (children.length * 10) + 20,
+                                        y2: parent.position('y') + (children.length * 10) + 20
                                     }
                                 }).run();
+
+                                automoveRuleRef.current = cy.automove({
+                                    nodesMatching: '.reified_edge',
+                                    reposition: 'mean',
+// This tells each reified edge node to stay in the middle
+                                    // of its connected Course/Lecturer nodes
+                                    when: "matching"
+                                });
+                           //     automoveRuleRef.current.apply();
                             }
                         });
-
-                    });
-
-                    mainLayout.run();
-                    if (automoveRuleRef.current) {
-                        automoveRuleRef.current.apply();
                     }
-                    setTimeout(() => {
-                        automoveRuleRef.current.apply();
-                        cy.fit(); // Optional: re-center view
-                        cy.style().update();
+                });
 
-                    }, 100);
+                layout.run();
 
-                }
+                cy.nodes(".property").ungrabify();
+                cy.nodes(".reified_edge").ungrabify();
+
+
             } else {
                 cy.layout({
                     name: 'circle',
@@ -434,13 +491,14 @@ export default function Home() {
                 }).run();
             }
 
+            console.log(elements)
             // Initialize automove
             // This example makes nodes with class 'follower' move with 'leader'
 
             return () => {
                 if (automoveRuleRef.current) automoveRuleRef.current.destroy();
             };
-        }, [elements]);
+        }, [elements, showGraph, depElements]);
 
         // 2. Define visual styles
         const stylesheet = [
@@ -451,22 +509,22 @@ export default function Home() {
                     'background-color': '#FBB360',
                     'border-width': 1,
                     'border-color': '#935610',
+                    'shape': 'round-rectangle',
+                    'width': 60,
                 }
             },
             {
                 selector: '.property',
                 style: {
                     'shape': 'rectangle',
-                    'height': 9,          // Height of your "list item"
+                    'height': 12,          // Height of your "list item"
+                    'width': 80,
                     'background-color': '#ffffff',
                     'background-opacity': 0,
                     'border-width': 0,
                     'text-valign': 'center',
                     'font-size': '10px',
                     'label': 'data(label)',
-                    'text-margin-y': 22,
-                    'grabbable': false,
-                    'selectable': false
                 },
 
             },
@@ -478,6 +536,7 @@ export default function Home() {
                     'border-width': 1,
                     'border-color': '#935610',
                     'shape': 'round-rectangle',
+                    'padding': 50,
                 }
             },
             {
@@ -499,7 +558,7 @@ export default function Home() {
             {
                 selector: '.tgt',
                 style: {
-                    'target-arrow-scale': 4,
+                    'target-arrow-scale': "4",
                 }
             },
 
@@ -511,7 +570,7 @@ export default function Home() {
                     'border-color': '#935610',
                     'corner-radius': 15,
                     'shape': 'round-rectangle',
-                    'text-margin-y': 24,
+                    'width': 60,
                 }
             },
             {
@@ -519,10 +578,21 @@ export default function Home() {
                 style: {
                     'border-color': '#738091',
                     'background-color': '#ffffff',
-                    'width': '0.1px',
-                    'height': '0.1px',
-                    'grabbable': false,
-                    "selectable": false,
+                    'border-width': 1,
+                }
+            },
+            {
+                selector: '.dep',
+                style: {
+                    'events': 'no', // Prevents the edge from triggering hover/layout events
+                    'width': 1,
+                    'line-style': 'dashed',
+                    'line-color': '#000000',
+                    'target-arrow-color': '#000000',
+                    'target-arrow-shape': 'triangle',
+                    'curve-style': 'unbundled-bezier',
+                    'control-point-step-size': 20, // Higher number = deeper bend
+                    'control-point-distance': 50, // This forces the "arc"
                 }
             },
         ];
@@ -530,13 +600,26 @@ export default function Home() {
 
         return (
             <div>
+                <ButtonGroup variant={"outlined"}>
+                    <Button icon="refresh" onClick={() => {
+                        setShowGraph(showGraph+1);
+                    }
+                    }>Redraw</Button>
+                    <Button icon={"zoom-to-fit"} onClick={() => {
+                        cyRef.current?.fit();
+                    }}>Zoom to fit graph</Button>
+                    <Button icon={showDeps ? "eye-open" : "eye-off"} onClick={() => setShowDeps(!showDeps)}>{showDeps ? "Hide dependencies" : "Show dependencies"}</Button>
+                </ButtonGroup>
+                { showGraph ? (
                 <CytoscapeComponent
+                    key={`${nodes.length}-${edges.length}-${deps.length}-${hasBeenNormalized}`}
                     elements={elements}
                     style={{ width: '100%', height: '50em' }}
                     stylesheet={stylesheet}
                     cy={(cy) => { cyRef.current = cy;}}
                     layout={{ name: 'null' }}
-                />
+                    headless={false}
+                /> ) : (<div/>)}
             </div>
         );
     };
@@ -570,7 +653,8 @@ export default function Home() {
         <nav>
             <Navbar fixedToTop>
                 <NavbarGroup align={Alignment.START}>
-                    <NavbarHeading>LPG-Norm</NavbarHeading>
+                    <Image src={logo} alt={"The logo of GraNa-GraNo: A piece of cheese"} width={23} height={23} style={{marginRight: "0.6em"}}></Image>
+                    <NavbarHeading>🌾  GraNa-GraNo</NavbarHeading>
                     <NavbarDivider/>
                     <Button className="bp6-minimal" icon="reset" text="Reset" type="reset" onClick={() => reset()} /><Tooltip content="Resets Neo4j, Memgraph, and this application."><Icon icon="small-info-sign" />
                 </Tooltip>
@@ -614,7 +698,51 @@ export default function Home() {
                                 <span>&nbsp;</span>
                                 <Tooltip content="External link: Details on the available scenarios"><Link href="https://dmki-tuwien.github.io/" target="_blank"> <Icon icon="share" size={12}/> </Link></Tooltip>
                             </div>
-                        <HTMLSelect id="select-scenario" disabled={isLoadingScenario || loadedScenario} options={availableScenarios} onChange={(e) => setScenario(e.currentTarget.value)} value={scenario}>Scenario</HTMLSelect>
+                            <Select
+                                filterable={false}
+                                disabled={isLoadingScenario || loadedScenario}
+                                fill={true}
+                                items={availableScenarios}
+                                itemRenderer={(scen, { handleClick }) => (
+                                    <MenuItem
+                                        active={scenario === scen.value}
+                                        key={scen.value}
+                                        onClick={handleClick}
+                                        text={scen.label}
+                                    />
+                                )}
+                                popoverProps={{
+                                    placement: "bottom",
+                                }}
+                                itemListRenderer={({ items, itemsParentRef, renderItem }) => {
+                                    let lastCategory = "";
+                                    let menuItems = [];
+                                    if (items.length > 0) {
+                                        menuItems = items.map((scen, index) => {
+                                            const elements = [];
+
+                                            // If category changes, push a Divider/Header
+                                            if (scen.category !== lastCategory) {
+                                                elements.push(
+                                                    <MenuDivider key={`header-${scen.category}`} title={scen.category} />
+                                                );
+                                                lastCategory = scen.category;
+                                            }
+
+                                            elements.push(renderItem(scen, index));
+                                            return elements;
+                                        });
+                                    }
+
+
+                                    return <Menu ulRef={itemsParentRef}>{menuItems}</Menu>;
+                                }}
+                                onItemSelect={(scen) => setScenario(scen.value)}
+                                itemsEqual="name"               >
+                                <Button fill={true}
+                                        disabled={isLoadingScenario || loadedScenario}
+                                        alignText={"left"} text={<Text ellipsize={true} tagName="div" style={{ maxWidth: "310px" }}>{availableScenarios.find(s => s.value === scenario)?.label || "Select scenario"}</Text>} endIcon="double-caret-vertical"></Button>
+                            </Select>
                         </Label>
                     </div>
                     <Button id="button-load" icon="import" fill={true} loading={isLoadingScenario} disabled={loadedScenario} onClick={() => load_scenario()}>Load</Button>
@@ -627,7 +755,7 @@ export default function Home() {
             <div className="wrapper" id="dependencies" hidden={!loadedScenario}>
                 <Card >
                 <H3>Dependencies and Transformations</H3>
-                    <div>
+                    <div style={{ minHeight:"220px" }}>
                         <H4>Before Normalization</H4>
 
                         <Label><div style={{width: "fit-content", display: 'flex', alignItems: 'center'}}>
@@ -645,9 +773,16 @@ export default function Home() {
                                 ))}
 
                             </ul></Label>
-                        <Label>Minimal Cover
-                        <TextArea disabled={hasBeenNormalized || isNormalizing} value={minCov.join("\n")}></TextArea></Label>
-                        <Button>Edit minimal cover</Button>
+
+                        <Button onClick={() => setDependencyDialogOpen(true)} icon={"edit"} disabled={hasBeenNormalized}>Edit dependencies</Button>
+                        <Dialog title="Edit dependencies" icon="edit" isOpen={dependencyDialogOpen} onClose={()=>setDependencyDialogOpen(false)} isCloseButtonShown={false}>
+                            <DialogBody>
+                                <Label>Minimal Cover used for normalization
+                                    <TextArea style={{width: "100%", height: "10em"}} disabled={hasBeenNormalized || isNormalizing} value={minCov.join("\n")} onChange={(e) => setMinCov(e.currentTarget.value.split("\n"))}></TextArea></Label>
+                            </DialogBody>
+                            <DialogFooter actions={<Button intent="primary" text="Close" onClick={()=>setDependencyDialogOpen(false)} />} />
+
+                        </Dialog>
                     </div>
                     <div hidden={!hasBeenNormalized}>
                         <H4>After Normalization</H4>
@@ -668,16 +803,15 @@ export default function Home() {
                                     </span>
                             </Tooltip>
                              
-                            <Tooltip content="External link: Definitions of the transformations that can be performed during normalization."><Link href="https://dmki-tuwien.github.io/" target="_blank"> <Icon icon="share" size={12}/> </Link></Tooltip>
+                            {/*<Tooltip content="External link: Definitions of the transformations that can be performed during normalization."><Link href="https://dmki-tuwien.github.io/" target="_blank"> <Icon icon="share" size={12}/> </Link></Tooltip>*/}
                         </div>
                             <ul>
 
                                 {normalizationResult[1].map((transf, index) => (
-                                    <li key={index}>{transf}</li>
-                                ))}
+                                    <li key={index}>{transf}&nbsp;<Link href="https://dmki-tuwien.github.io/" target="_blank"> <Icon icon="share" size={12}/> </Link></li>                                ))}
 
                             </ul></Label>
-
+                        <p>Normalization took {normalizationResult[2]} seconds.</p>
                     </div>
                 </Card>
             </div>
@@ -759,7 +893,29 @@ export default function Home() {
                             popoverProps={{
                                 placement: "bottom",
                             }}
-                            itemListRenderer={renderDependencyList}
+                            itemListRenderer={({ items, itemsParentRef, renderItem }) => {
+                                let lastCategory = "";
+                                let menuItems = [];
+                                if (items.length > 0) {
+                                    menuItems = items.map((dependency, index) => {
+                                        const elements = [];
+
+                                        // If category changes, push a Divider/Header
+                                        if (dependency.category !== lastCategory) {
+                                            elements.push(
+                                                <MenuDivider key={`header-${dependency.category}`} title={dependency.category} />
+                                            );
+                                            lastCategory = dependency.category;
+                                        }
+
+                                        elements.push(renderItem(dependency, index));
+                                        return elements;
+                                    });
+                                }
+
+
+                                return <Menu ulRef={itemsParentRef}>{menuItems}</Menu>;
+                            }}
                             onItemSelect={(dependency) => setSelectedPerDepMetric(dependency)}
                             itemsEqual="name"
                         >
@@ -827,10 +983,77 @@ export default function Home() {
                     {afterVisualization}
                 </Card>
             </div>
+
+            </div>
+            <div hidden={!loadedScenario}>
+                <Card >
+                    <H5>Legend</H5>
+                    <ul id={"legend"}>
+                        <li key={"legend-node"}><div style={{
+                            display: "inline-block",
+                            width: "30px",
+                            height:"15px",
+                            border: "solid",
+                            marginInlineEnd: "5px",
+                            backgroundColor: "#FBB360",
+                            borderWidth: "1px",
+                            borderColor: "#935610",
+                            borderRadius: "6px",
+                            verticalAlign: "text-bottom"
+                        }}>
+                        </div>Node</li>
+                        <li key={"legend-edge"}><div style={{
+                            display: "inline-block",
+                            width: "15px",
+                            height:"1px",
+                            border: "solid",
+                            borderWidth: "1px",
+                            borderColor: "#738091",
+                            borderRadius: "6px",
+                            verticalAlign: "middle"
+                        }}>
+                        </div><div style={{
+                            display: "inline-block",
+                            width: "30px",
+                            height:"15px",
+                            border: "solid",
+                            backgroundColor: "#ffffff",
+                            borderWidth: "1px",
+                            borderColor: "#738091",
+                            borderRadius: "6px",
+                            verticalAlign: "text-bottom"
+                        }}>
+                        </div><div style={{
+                            display: "inline-block",
+                            width: "15px",
+                            height:"1px",
+                            border: "solid",
+                            marginInlineEnd: "5px",
+                            borderWidth: "1px",
+                            borderColor: "#738091",
+                            borderRadius: "6px",
+                            verticalAlign: "middle"
+                        }}>
+                        </div>Edge</li>
+                        <li key={"legend-dependency"}><div style={{
+                            display: "inline-block",
+                            width: "25px",
+                            height:"8px",
+                            borderTop: "dashed",
+                            marginInlineEnd: "5px",
+                            borderTopWidth: "2px",
+                            borderTopColor: "#000000",
+                            verticalAlign: "text-bottom"
+                        }}></div>Dependency</li>
+                        <li key={"legend-disclaimer"}>If more than 50 nodes are visualized, individual properties are not shown for performance reasons.</li>
+                    </ul>
+
+
+                </Card>
             </div>
         </main>
           <footer>
-              © 2026 -
+              ©&nbsp;2026&nbsp;-&nbsp;
               <a href={"https://johannes.schrott.onl"} target={"__blank"}>Johannes Schrott</a>,&nbsp;
               <a href={"https://dmki-tuwien.github.io"} target={"__blank"}>DMKI Lab</a>,&nbsp;
               <a href={"https://tuwien.ac.at"} target={"__blank"}>TU Wien</a>

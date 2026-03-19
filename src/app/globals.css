@@ -41,9 +41,10 @@ footer {
 }
 #dependencies.wrapper > .bp6-card, #visualization.wrapper {
   display: grid;
-  gap: 20px;
+  column-gap: 20px;
   grid-template-columns: 1fr 1fr;
-  margin-bottom: -20px;
+  align-items: start;
+  height: 100%;
 }
 
 #dependencies.wrapper > .bp6-card > h3 {
@@ -54,6 +55,16 @@ footer {
 }
 #dependencies.wrapper > .bp6-card > div > label > textarea {
   width: 100%;
+}
+
+#legend {
+  padding-inline-start: 0;
+  margin-block-end: 0;
+}
+
+#legend > li {
+  display: inline-block;
+  margin-inline-end: 30px;
 }
 
 #visualization.wrapper {
