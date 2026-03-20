@@ -18,6 +18,7 @@
     "cytoscape-automove": "^1.10.3",
     "cytoscape-avsdf": "~1.0.0",
     "cytoscape-cola": "^2.5.1",
+    "cytoscape-fcose": "^2.2.0",
     "react-cytoscapejs": "~2.0",
     "@mui/x-charts": "^8.0.0",
     "@mui/material": "^7.3.9",
