@@ -77,12 +77,16 @@ export default function Home() {
 
     const [dependencyDialogOpen, setDependencyDialogOpen] = useState<boolean>(false);
 
-    const API_ENDPOINT = `${window.location.origin}${process.env.API_ENDPOINT ?? ""}`;
+    const [apiEndpoint, setApiEndpoint] = useState<string>("");
+    
+    useEffect(() => {
+        setApiEndpoint(`${window.location.origin}${process.env.API_ENDPOINT ?? ""}`)
+    }, []);
 
     useEffect(() => {
         const fetchScenarios = async () => {
             try {
-                const response = await fetch(`${API_ENDPOINT}/${database}/scenarios`);
+                const response = await fetch(`${apiEndpoint}/${database}/scenarios`);
                 if (!response.ok) throw new Error("Failed to fetch");
 
                 const data = await response.json();
@@ -108,7 +112,7 @@ export default function Home() {
     useEffect(() => {
         const fetchDependencies = async () => {
             try {
-                const response = await fetch(`${API_ENDPOINT}/${database}/scenarios/${scenario}/dependencies`);
+                const response = await fetch(`${apiEndpoint}/${database}/scenarios/${scenario}/dependencies`);
                 if (!response.ok) throw new Error("Failed to fetch");
 
                 const data = await response.json();
@@ -125,7 +129,7 @@ export default function Home() {
 
         const fetchMinimalCover = async () => {
             try {
-                const response = await fetch(`${API_ENDPOINT}/${database}/scenarios/${scenario}/minimal_cover`);
+                const response = await fetch(`${apiEndpoint}/${database}/scenarios/${scenario}/minimal_cover`);
                 if (!response.ok) throw new Error("Failed to fetch");
 
                 const data = await response.json();
@@ -142,7 +146,7 @@ export default function Home() {
 
         const fetchPerGraphMetrics = async () => {
             try {
-                const response = await fetch(`${API_ENDPOINT}/${database}/statistics/graph`);
+                const response = await fetch(`${apiEndpoint}/${database}/statistics/graph`);
                 if (!response.ok) throw new Error("Failed to fetch");
 
                 const data = await response.json();
@@ -162,7 +166,7 @@ export default function Home() {
         const fetchPerDepMetrics = async () => {
             try {
                 if (!hasBeenNormalized) {
-                    const response = await fetch(`${API_ENDPOINT}/${database}/statistics/dependencies`,  { method: "POST", headers: {
+                    const response = await fetch(`${apiEndpoint}/${database}/statistics/dependencies`,  { method: "POST", headers: {
                             "Content-Type": "application/json",
                         }, body: JSON.stringify(minCov) });
                     if (!response.ok) throw new Error("Failed to fetch");
@@ -180,7 +184,7 @@ export default function Home() {
                     setSelectedPerDepMetric(mappedData[0])
                 }
                 if (hasBeenNormalized) {
-                    const response = await fetch(`${API_ENDPOINT}/${database}/statistics/dependencies`,  { method: "POST", headers: {
+                    const response = await fetch(`${apiEndpoint}/${database}/statistics/dependencies`,  { method: "POST", headers: {
                             "Content-Type": "application/json",
                         }, body: JSON.stringify(normalizationResult[0]) });
                     if (!response.ok) throw new Error("Failed to fetch");
@@ -230,16 +234,16 @@ export default function Home() {
     const load_scenario = async () => {
         try {
             setIsLoadingScenario(true);
-            const response = await fetch(`${API_ENDPOINT}/${database}/scenarios/load?id=${scenario}`,  { method: "POST" });
+            const response = await fetch(`${apiEndpoint}/${database}/scenarios/load?id=${scenario}`,  { method: "POST" });
             if (!response.ok) throw new Error("Failed to fetch");
 
             setIsLoadingScenario(false);
 
-            const nodes_res = await fetch(`${API_ENDPOINT}/${database}/visualize/nodes`);
+            const nodes_res = await fetch(`${apiEndpoint}/${database}/visualize/nodes`);
             const nodes = await nodes_res.json();
-            const edges_res = await fetch(`${API_ENDPOINT}/${database}/visualize/edges`);
+            const edges_res = await fetch(`${apiEndpoint}/${database}/visualize/edges`);
             const edges = await edges_res.json();
-            const deps_res = await fetch(`${API_ENDPOINT}/${database}/visualize/dependencies`,  { method: "POST", headers: {
+            const deps_res = await fetch(`${apiEndpoint}/${database}/visualize/dependencies`,  { method: "POST", headers: {
                     "Content-Type": "application/json",
                 }, body: JSON.stringify(minCov) });
             const deps = await deps_res.json();
@@ -258,16 +262,16 @@ export default function Home() {
 
     const normalize = async () => {
         setIsNormalizing(true);
-        const response = await fetch(`${API_ENDPOINT}/${database}/normalize`, { method: "POST", headers: {
+        const response = await fetch(`${apiEndpoint}/${database}/normalize`, { method: "POST", headers: {
                 "Content-Type": "application/json",
             }, body: JSON.stringify(minCov) })
         const data = await response.json();
 
-        const nodes_res = await fetch(`${API_ENDPOINT}/${database}/visualize/nodes`);
+        const nodes_res = await fetch(`${apiEndpoint}/${database}/visualize/nodes`);
         const nodes = await nodes_res.json();
-        const edges_res = await fetch(`${API_ENDPOINT}/${database}/visualize/edges`);
+        const edges_res = await fetch(`${apiEndpoint}/${database}/visualize/edges`);
         const edges = await edges_res.json();
-        const deps_res = await fetch(`${API_ENDPOINT}/${database}/visualize/dependencies`,  { method: "POST", headers: {
+        const deps_res = await fetch(`${apiEndpoint}/${database}/visualize/dependencies`,  { method: "POST", headers: {
                 "Content-Type": "application/json",
             }, body: JSON.stringify(data[0])});
         const deps = await deps_res.json();
@@ -287,7 +291,7 @@ export default function Home() {
         setPerDepMetricsBefore([]);
         setHasBeenNormalized(false);
         setNormalizationResult([[],[]]);
-        await fetch(`${API_ENDPOINT}/reset`, { method: "POST" });
+        await fetch(`${apiEndpoint}/reset`, { method: "POST" });
     };
 
     const GraphView = ({ nodes = [], edges = [], deps = []}) => {
