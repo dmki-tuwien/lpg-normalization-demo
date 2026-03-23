@@ -78,7 +78,7 @@ export default function Home() {
     const [dependencyDialogOpen, setDependencyDialogOpen] = useState<boolean>(false);
 
     const [apiEndpoint, setApiEndpoint] = useState<string>("");
-    
+
     useEffect(() => {
         setApiEndpoint(`${window.location.origin}${process.env.API_ENDPOINT ?? ""}`)
     }, []);
