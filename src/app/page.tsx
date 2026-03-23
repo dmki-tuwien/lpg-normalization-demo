@@ -21,7 +21,6 @@ import logo from '../../public/logo.png';
 
 
 import {useEffect, useRef, useState} from "react";
-import {string} from "prop-types";
 import Image from "next/image";
 
 cytoscape.use(cola);
@@ -78,7 +77,7 @@ export default function Home() {
 
     const [dependencyDialogOpen, setDependencyDialogOpen] = useState<boolean>(false);
 
-    const API_ENDPOINT = process.env.API_ENDPOINT ?? "http://localhost:8080";
+    const API_ENDPOINT = `${window.location.origin}${process.env.API_ENDPOINT ?? ""}`;
 
     useEffect(() => {
         const fetchScenarios = async () => {
@@ -422,7 +421,7 @@ export default function Home() {
 
             cy.elements().remove();
             cy.add(structuralElements);
-            
+
             if (nodes.length < 50) {
                 // 1. Define the Automove Rule FIRST
                 // This ensures it catches the movement from the layout
