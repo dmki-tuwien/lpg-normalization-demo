@@ -78,10 +78,12 @@ export default function Home() {
 
     const [dependencyDialogOpen, setDependencyDialogOpen] = useState<boolean>(false);
 
+    const API_ENDPOINT = process.env.API_ENDPOINT ?? "http://localhost:8080";
+
     useEffect(() => {
         const fetchScenarios = async () => {
             try {
-                const response = await fetch(`http://localhost:8000/${database}/scenarios`);
+                const response = await fetch(`${API_ENDPOINT}/${database}/scenarios`);
                 if (!response.ok) throw new Error("Failed to fetch");
 
                 const data = await response.json();
@@ -107,7 +109,7 @@ export default function Home() {
     useEffect(() => {
         const fetchDependencies = async () => {
             try {
-                const response = await fetch(`http://localhost:8000/${database}/scenarios/${scenario}/dependencies`);
+                const response = await fetch(`${API_ENDPOINT}/${database}/scenarios/${scenario}/dependencies`);
                 if (!response.ok) throw new Error("Failed to fetch");
 
                 const data = await response.json();
@@ -124,7 +126,7 @@ export default function Home() {
 
         const fetchMinimalCover = async () => {
             try {
-                const response = await fetch(`http://localhost:8000/${database}/scenarios/${scenario}/minimal_cover`);
+                const response = await fetch(`${API_ENDPOINT}/${database}/scenarios/${scenario}/minimal_cover`);
                 if (!response.ok) throw new Error("Failed to fetch");
 
                 const data = await response.json();
@@ -141,7 +143,7 @@ export default function Home() {
 
         const fetchPerGraphMetrics = async () => {
             try {
-                const response = await fetch(`http://localhost:8000/${database}/statistics/graph`);
+                const response = await fetch(`${API_ENDPOINT}/${database}/statistics/graph`);
                 if (!response.ok) throw new Error("Failed to fetch");
 
                 const data = await response.json();
@@ -161,7 +163,7 @@ export default function Home() {
         const fetchPerDepMetrics = async () => {
             try {
                 if (!hasBeenNormalized) {
-                    const response = await fetch(`http://localhost:8000/${database}/statistics/dependencies`,  { method: "POST", headers: {
+                    const response = await fetch(`${API_ENDPOINT}/${database}/statistics/dependencies`,  { method: "POST", headers: {
                             "Content-Type": "application/json",
                         }, body: JSON.stringify(minCov) });
                     if (!response.ok) throw new Error("Failed to fetch");
@@ -179,7 +181,7 @@ export default function Home() {
                     setSelectedPerDepMetric(mappedData[0])
                 }
                 if (hasBeenNormalized) {
-                    const response = await fetch(`http://localhost:8000/${database}/statistics/dependencies`,  { method: "POST", headers: {
+                    const response = await fetch(`${API_ENDPOINT}/${database}/statistics/dependencies`,  { method: "POST", headers: {
                             "Content-Type": "application/json",
                         }, body: JSON.stringify(normalizationResult[0]) });
                     if (!response.ok) throw new Error("Failed to fetch");
@@ -229,16 +231,16 @@ export default function Home() {
     const load_scenario = async () => {
         try {
             setIsLoadingScenario(true);
-            const response = await fetch(`http://localhost:8000/${database}/scenarios/load?id=${scenario}`,  { method: "POST" });
+            const response = await fetch(`${API_ENDPOINT}/${database}/scenarios/load?id=${scenario}`,  { method: "POST" });
             if (!response.ok) throw new Error("Failed to fetch");
 
             setIsLoadingScenario(false);
 
-            const nodes_res = await fetch(`http://localhost:8000/${database}/visualize/nodes`);
+            const nodes_res = await fetch(`${API_ENDPOINT}/${database}/visualize/nodes`);
             const nodes = await nodes_res.json();
-            const edges_res = await fetch(`http://localhost:8000/${database}/visualize/edges`);
+            const edges_res = await fetch(`${API_ENDPOINT}/${database}/visualize/edges`);
             const edges = await edges_res.json();
-            const deps_res = await fetch(`http://localhost:8000/${database}/visualize/dependencies`,  { method: "POST", headers: {
+            const deps_res = await fetch(`${API_ENDPOINT}/${database}/visualize/dependencies`,  { method: "POST", headers: {
                     "Content-Type": "application/json",
                 }, body: JSON.stringify(minCov) });
             const deps = await deps_res.json();
@@ -257,16 +259,16 @@ export default function Home() {
 
     const normalize = async () => {
         setIsNormalizing(true);
-        const response = await fetch(`http://localhost:8000/${database}/normalize`, { method: "POST", headers: {
+        const response = await fetch(`${API_ENDPOINT}/${database}/normalize`, { method: "POST", headers: {
                 "Content-Type": "application/json",
             }, body: JSON.stringify(minCov) })
         const data = await response.json();
 
-        const nodes_res = await fetch(`http://localhost:8000/${database}/visualize/nodes`);
+        const nodes_res = await fetch(`${API_ENDPOINT}/${database}/visualize/nodes`);
         const nodes = await nodes_res.json();
-        const edges_res = await fetch(`http://localhost:8000/${database}/visualize/edges`);
+        const edges_res = await fetch(`${API_ENDPOINT}/${database}/visualize/edges`);
         const edges = await edges_res.json();
-        const deps_res = await fetch(`http://localhost:8000/${database}/visualize/dependencies`,  { method: "POST", headers: {
+        const deps_res = await fetch(`${API_ENDPOINT}/${database}/visualize/dependencies`,  { method: "POST", headers: {
                 "Content-Type": "application/json",
             }, body: JSON.stringify(data[0])});
         const deps = await deps_res.json();
@@ -286,7 +288,7 @@ export default function Home() {
         setPerDepMetricsBefore([]);
         setHasBeenNormalized(false);
         setNormalizationResult([[],[]]);
-        await fetch(`http://localhost:8000/reset`, { method: "POST" });
+        await fetch(`${API_ENDPOINT}/reset`, { method: "POST" });
     };
 
     const GraphView = ({ nodes = [], edges = [], deps = []}) => {
@@ -420,9 +422,7 @@ export default function Home() {
 
             cy.elements().remove();
             cy.add(structuralElements);
-
-            let count = showGraph;
-
+            
             if (nodes.length < 50) {
                 // 1. Define the Automove Rule FIRST
                 // This ensures it catches the movement from the layout
