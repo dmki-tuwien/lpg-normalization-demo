@@ -143,7 +143,8 @@ export default function Home() {
         };
 
         if (!hasBeenNormalized && scenario !== "") {fetchMinimalCover()}
-
+    }, [database, scenario, hasBeenNormalized, loadedScenario]);
+    useEffect(() => {
         const fetchPerGraphMetrics = async () => {
             try {
                 const response = await fetch(`${apiEndpoint}/${database}/statistics/graph`);
@@ -208,7 +209,7 @@ export default function Home() {
 
         if (loadedScenario && scenario !== "") {fetchPerDepMetrics()}
 
-    }, [database, scenario, hasBeenNormalized, loadedScenario]);
+    }, [database, scenario, hasBeenNormalized, loadedScenario, dependencies]);
 
     useEffect(() => {
         const keys = Object.keys(perGraphMetricsBefore);
