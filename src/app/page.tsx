@@ -1060,6 +1060,7 @@ export default function Home() {
               <a href={"https://johannes.schrott.onl"} target={"__blank"}>Johannes Schrott</a>,&nbsp;
               <a href={"https://dmki-tuwien.github.io"} target={"__blank"}>DMKI Lab</a>,&nbsp;
               <a href={"https://tuwien.ac.at"} target={"__blank"}>TU Wien</a>
+              {apiEndpoint}
           </footer>
       </div>
   );
