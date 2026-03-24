@@ -781,7 +781,7 @@ export default function Home() {
                         <Dialog title="Edit dependencies" icon="edit" isOpen={dependencyDialogOpen} onClose={()=>setDependencyDialogOpen(false)} isCloseButtonShown={false}>
                             <DialogBody>
                                 <Label>Minimal Cover used for normalization
-                                    <TextArea style={{width: "100%", height: "10em"}} disabled={hasBeenNormalized || isNormalizing} value={minCov.join("\n")} onChange={(e) => setMinCov(e.currentTarget.value.split("\n"))}></TextArea></Label>
+                                    <TextArea style={{width: "100%", height: "10em"}} disabled={hasBeenNormalized || isNormalizing} value={minCov.join("\n")} onChange={(e) => {setMinCov(e.currentTarget.value.split("\n")); setDependencies(e.currentTarget.value.split("\n"))}}></TextArea></Label>
                             </DialogBody>
                             <DialogFooter actions={<Button intent="primary" text="Close" onClick={()=>setDependencyDialogOpen(false)} />} />
 
