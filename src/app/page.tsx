@@ -144,6 +144,7 @@ export default function Home() {
 
         if (!hasBeenNormalized && scenario !== "") {fetchMinimalCover()}
     }, [database, scenario, hasBeenNormalized, loadedScenario]);
+
     useEffect(() => {
         const fetchPerGraphMetrics = async () => {
             try {
@@ -152,7 +153,22 @@ export default function Home() {
 
                 const data = await response.json();
 
-                if (!hasBeenNormalized) {setPerGraphMetricsBefore(data)}
+                if (!hasBeenNormalized) {
+                    setPerGraphMetricsBefore(data)
+                    const nodes_res = await fetch(`${apiEndpoint}/${database}/visualize/nodes`);
+                    const nodes = await nodes_res.json();
+                    const edges_res = await fetch(`${apiEndpoint}/${database}/visualize/edges`);
+                    const edges = await edges_res.json();
+                    const deps_res = await fetch(`${apiEndpoint}/${database}/visualize/dependencies`,  { method: "POST", headers: {
+                            "Content-Type": "application/json",
+                        }, body: JSON.stringify(minCov) });
+                    const deps = await deps_res.json();
+
+                    if (!response.ok) throw new Error("Failed to fetch");
+
+                    setBeforeVisualization(<GraphView nodes={nodes} edges={edges} deps={deps}></GraphView>)
+
+                }
                 if (hasBeenNormalized) {setPerGraphMetricsAfter(data)}
 
 
@@ -240,18 +256,7 @@ export default function Home() {
 
             setIsLoadingScenario(false);
 
-            const nodes_res = await fetch(`${apiEndpoint}/${database}/visualize/nodes`);
-            const nodes = await nodes_res.json();
-            const edges_res = await fetch(`${apiEndpoint}/${database}/visualize/edges`);
-            const edges = await edges_res.json();
-            const deps_res = await fetch(`${apiEndpoint}/${database}/visualize/dependencies`,  { method: "POST", headers: {
-                    "Content-Type": "application/json",
-                }, body: JSON.stringify(minCov) });
-            const deps = await deps_res.json();
 
-            if (!response.ok) throw new Error("Failed to fetch");
-
-            setBeforeVisualization(<GraphView nodes={nodes} edges={edges} deps={deps}></GraphView>)
 
             setLoadedScenario(true);
         } catch (error) {
@@ -772,8 +777,8 @@ export default function Home() {
                         </div>
                             <ul>
 
-                                {dependencies.map((dep, index) => (
-                                    <li key={index}>{prettyDep(dep)}</li>
+                                {dependencies.map((dep, _) => (
+                                    <li key={dep}>{prettyDep(dep)}</li>
                                 ))}
 
                             </ul></Label>
