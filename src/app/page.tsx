@@ -2,14 +2,14 @@
 import {
     Alignment,
     AnchorButton,
-    Button, Card, H3, H4, H5, HTMLSelect, Icon, Label, Link, MenuItem, MenuDivider, Menu,
+    Button, Card, H3, H4, H5, Icon, Label, Link, MenuItem, MenuDivider, Menu,
     Navbar,
     NavbarDivider,
     NavbarGroup,
     NavbarHeading, SegmentedControl, Text,
     TextArea, Tooltip, Dialog, DialogBody, DialogFooter, ButtonGroup
 } from "@blueprintjs/core";
-import {ItemListRenderer, ItemPredicate, ItemRenderer, Select} from "@blueprintjs/select";
+import {ItemListRenderer, Select} from "@blueprintjs/select";
 import CytoscapeComponent from 'react-cytoscapejs';
 import cytoscape from 'cytoscape';
 import cola from 'cytoscape-cola';
@@ -744,7 +744,7 @@ export default function Home() {
                                 itemsEqual="name"               >
                                 <Button fill={true}
                                         disabled={isLoadingScenario || loadedScenario}
-                                        alignText={"left"} text={<Text ellipsize={true} tagName="div" style={{ maxWidth: "310px" }}>{availableScenarios.find(s => s.value === scenario)?.label || "Select scenario"}</Text>} endIcon="double-caret-vertical"></Button>
+                                        alignText={"left"} text={<Text ellipsize={true} tagName="div" style={{ maxWidth: "310px" }}>{availableScenarios.find(s => s.value === scenario)?.label || "Loading scenarios …"}</Text>} endIcon="double-caret-vertical"></Button>
                             </Select>
                         </Label>
                     </div>
@@ -1060,7 +1060,6 @@ export default function Home() {
               <a href={"https://johannes.schrott.onl"} target={"__blank"}>Johannes Schrott</a>,&nbsp;
               <a href={"https://dmki-tuwien.github.io"} target={"__blank"}>DMKI Lab</a>,&nbsp;
               <a href={"https://tuwien.ac.at"} target={"__blank"}>TU Wien</a>
-              {apiEndpoint}
           </footer>
       </div>
   );
