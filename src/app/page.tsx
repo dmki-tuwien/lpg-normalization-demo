@@ -107,7 +107,7 @@ export default function Home() {
         };
 
         fetchScenarios();
-    }, [database]);
+    }, [database, apiEndpoint]);
 
     useEffect(() => {
         const fetchDependencies = async () => {
