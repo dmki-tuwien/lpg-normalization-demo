@@ -546,6 +546,8 @@ export default function Home() {
                     'border-color': '#935610',
                     'shape': 'round-rectangle',
                     'padding': 50,
+                    'width': 60,
+                    'height': 12,
                 }
             },
             {
@@ -588,6 +590,8 @@ export default function Home() {
                     'border-color': '#738091',
                     'background-color': '#ffffff',
                     'border-width': 1,
+                    'width': 1,
+                    'height': 1,
                 }
             },
             {
@@ -633,29 +637,6 @@ export default function Home() {
         );
     };
 
-    const renderDependencyList: ItemListRenderer<Dependency> = ({ items, itemsParentRef, renderItem }) => {
-        let lastCategory = "";
-        let menuItems = [];
-        if (items.length > 0) {
-            menuItems = items.map((dependency, index) => {
-                const elements = [];
-
-                // If category changes, push a Divider/Header
-                if (dependency.category !== lastCategory) {
-                    elements.push(
-                        <MenuDivider key={`header-${dependency.category}`} title={dependency.category} />
-                    );
-                    lastCategory = dependency.category;
-                }
-
-                elements.push(renderItem(dependency, index));
-                return elements;
-            });
-        }
-
-
-        return <Menu ulRef={itemsParentRef}>{menuItems}</Menu>;
-    };
 
     return (
       <div>
