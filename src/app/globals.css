@@ -8,7 +8,7 @@ main {
   padding: 20px;
   padding-bottom: 70px;
   display: grid !important;
-  grid-template-columns: 30em auto;
+  grid-template-columns: 35em auto;
   gap: 20px;
 }
 
