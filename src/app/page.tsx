@@ -650,7 +650,7 @@ export default function Home() {
                 </Tooltip>
                 </NavbarGroup>
                 <NavbarGroup align={Alignment.END}>
-                    <AnchorButton className="bp6-minimal" endIcon="share" text="Open documentation" href="https://dmki-tuwien.github.io/lpg-normalization" target="_blank"/>
+                    <AnchorButton className="bp6-minimal" endIcon="share" text="Open documentation" href="https://dmki-tuwien.github.io/grana-grano" target="_blank"/>
                 </NavbarGroup>
             </Navbar>
         </nav>
@@ -686,7 +686,7 @@ export default function Home() {
                                     </span>
                                 </Tooltip>
                                 <span>&nbsp;</span>
-                                <Tooltip content="External link: Details on the available scenarios"><Link href="https://dmki-tuwien.github.io/" target="_blank"> <Icon icon="share" size={12}/> </Link></Tooltip>
+                                <Tooltip content="External link: Details on the available scenarios"><Link href="https://dmki-tuwien.github.io/grana-grano/scenarios" target="_blank"> <Icon icon="share" size={12}/> </Link></Tooltip>
                             </div>
                             <Select
                                 filterable={false}
@@ -754,7 +754,7 @@ export default function Home() {
                                     </span>
                             </Tooltip>
                              
-                            <Tooltip content="External link: Definition of the syntax used to formulate dependencies."><Link href="https://dmki-tuwien.github.io/" target="_blank"> <Icon icon="share" size={12}/> </Link></Tooltip>
+                            <Tooltip content="External link: Definition of the syntax used to formulate dependencies."><Link href="https://dmki-tuwien.github.io/grana-grano/dependencies" target="_blank"> <Icon icon="share" size={12}/> </Link></Tooltip>
                         </div>
                             <ul>
 
@@ -798,7 +798,7 @@ export default function Home() {
                             <ul>
 
                                 {normalizationResult[1].map((transf, index) => (
-                                    <li key={index}>{transf}&nbsp;<Link href="https://dmki-tuwien.github.io/" target="_blank"> <Icon icon="share" size={12}/> </Link></li>                                ))}
+                                    <li key={index}>{transf}&nbsp;<Link href="https://dmki-tuwien.github.io/grana-grano/transformations" target="_blank"> <Icon icon="share" size={12}/> </Link></li>                                ))}
 
                             </ul></Label>
                         <p>Normalization took {normalizationResult[2]} seconds.</p>
@@ -811,7 +811,7 @@ export default function Home() {
                     <H4>Per-graph Metrics 
                         <Tooltip content="Metrics that are calculated before and after normalization on the whole graph of the loaded scenario."><Icon icon="small-info-sign"/></Tooltip>
                          
-                        <Tooltip content="External link: Metric definitions"><Link href="https://dmki-tuwien.github.io/" target="_blank"> <Icon icon="share" size={12}/> </Link></Tooltip>
+                        <Tooltip content="External link: Metric definitions"><Link href="https://dmki-tuwien.github.io/grana-grano/metrics#per-graph-metrics" target="_blank"> <Icon icon="share" size={12}/> </Link></Tooltip>
                     </H4>
                     <BarChart
                         dataset={perGraphMetricsGraphData}
@@ -863,7 +863,7 @@ export default function Home() {
                     <H4>Per-dependency Metrics 
                         <Tooltip content="Metrics that are calculated before and after normalization on each dependency of the loaded scenario."><Icon icon="small-info-sign"/></Tooltip>
                          
-                        <Tooltip content="External link: Metric definitions"><Link href="https://dmki-tuwien.github.io/" target="_blank"> <Icon icon="share" size={12}/> </Link></Tooltip>
+                        <Tooltip content="External link: Metric definitions"><Link href="https://dmki-tuwien.github.io/grana-grano/metrics#per-dependency-metrics" target="_blank"> <Icon icon="share" size={12}/> </Link></Tooltip>
                     </H4>
                     <div>
                         <Label>Dependency
