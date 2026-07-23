@@ -51,6 +51,8 @@ function prettyDep(text: string): string {
 
 export default function Home() {
     const [database, setDatabase] = useState("neo4j");
+    const [method, setMethod] = useState("graph-native");
+
 
     const [dependencies, setDependencies] = useState([]);
     const [minCov, setMinCov] = useState([]);
@@ -80,7 +82,9 @@ export default function Home() {
     const [apiEndpoint, setApiEndpoint] = useState<string>("");
 
     useEffect(() => {
-        setApiEndpoint(`${window.location.origin}${window.location.port === 3000 ? "" : "/api"}`)
+      //  setApiEndpoint(`${window.location.origin}${window.location.port === 3000 ? "" : "/api"}`)
+          setApiEndpoint(`http://127.0.0.1:8000`)
+
     }, []);
 
     useEffect(() => {
@@ -268,7 +272,7 @@ export default function Home() {
 
     const normalize = async () => {
         setIsNormalizing(true);
-        const response = await fetch(`${apiEndpoint}/${database}/normalize`, { method: "POST", headers: {
+        const response = await fetch(`${apiEndpoint}/${database}/normalize?method=${method}`, { method: "POST", headers: {
                 "Content-Type": "application/json",
             }, body: JSON.stringify(minCov) })
         const data = await response.json();
@@ -367,7 +371,7 @@ export default function Home() {
                     elements.push({
                         data: {
                             id: `${"re" + String(edge.id)}_${key}`,
-                            label: `${key}: ${value}`,
+                            label: `${key}: ${String(value)}`,
                             parent: "re" + String(edge.id) // This nests it inside the parent
                         },
                         classes: 'property'
@@ -658,6 +662,34 @@ export default function Home() {
             <div className="wrapper" id="scenarios">
                 <Card>
                     <H3>Configuration</H3>
+                    <Label><div style={{width: "fit-content", display: 'flex', alignItems: 'center'}}>
+                        Normalization method
+                        <span>&nbsp;</span>
+                        <Tooltip content="External link: Details on the available normalization methods"><Link href="https://dmki-tuwien.github.io/grana-grano/methods" target="_blank"> <Icon icon="share" size={12}/> </Link></Tooltip>
+                    </div>
+                        <SegmentedControl
+                            id="select-method"
+                            options={[
+                                {
+                                    label: "Graph-Native",
+                                    value: "graph-native",
+                                },
+                                {
+                                    label: "L:P",
+                                    value: "lp",
+                                },
+                                {
+                                    label: "Structural",
+                                    value: "structural",
+                                },
+                            ]}
+                            defaultValue={method}
+                            disabled={isLoadingScenario || loadedScenario}
+                            fill={true}
+                            onValueChange={(newValue) => setMethod(newValue)}
+                        />
+                    </Label>
+
                     <Label>Graph store
                     <SegmentedControl
                         id="select-database"
@@ -761,6 +793,7 @@ export default function Home() {
                                 {dependencies.map((dep, _) => (
                                     <li key={dep}>{prettyDep(dep)}</li>
                                 ))}
+                                { dependencies.length == 0 && <li><i>None</i></li> }
 
                             </ul></Label>
 
@@ -785,6 +818,7 @@ export default function Home() {
                                     {normalizationResult[0].map((dep, index) => (
                                         <li key={index}>{prettyDep(dep)}</li>
                                     ))}
+                                    { normalizationResult[0].length == 0 && <li><i>None</i></li> }
 
                             </ul></Label>
                         <Label><div style={{width: "fit-content", display: 'flex', alignItems: 'center'}}>
@@ -859,7 +893,7 @@ export default function Home() {
 
 
 
-                <div>
+                <div hidden={perDepMetricsBefore.length == 0}>
                     <H4>Per-dependency Metrics 
                         <Tooltip content="Metrics that are calculated before and after normalization on each dependency of the loaded scenario."><Icon icon="small-info-sign"/></Tooltip>
                          
@@ -909,12 +943,12 @@ export default function Home() {
                             onItemSelect={(dependency) => setSelectedPerDepMetric(dependency)}
                             itemsEqual="name"
                         >
-                            <Button fill={true} alignText={"left"} text={<Text ellipsize={true} tagName="div" style={{ maxWidth: "310px" }}>{prettyDep(selectedPerDepMetric.name)}</Text>} endIcon="double-caret-vertical"></Button>
+                            <Button fill={true} alignText={"left"} text={<Text ellipsize={true} tagName="div" style={{ maxWidth: "310px" }}>{selectedPerDepMetric ? prettyDep(selectedPerDepMetric.name) : ""}</Text>} endIcon="double-caret-vertical"></Button>
                         </Select>
                         </div>
                         </Label>
                         <BarChart
-                            dataset={Object.entries(selectedPerDepMetric.metrics).map(([label, value]) => ({
+                            dataset={Object.entries(selectedPerDepMetric ? selectedPerDepMetric.metrics : {}).map(([label, value]) => ({
                                 label,
                                 value,
                             }))}
