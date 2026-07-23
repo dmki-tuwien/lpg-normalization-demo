@@ -82,8 +82,8 @@ export default function Home() {
     const [apiEndpoint, setApiEndpoint] = useState<string>("");
 
     useEffect(() => {
-      //  setApiEndpoint(`${window.location.origin}${window.location.port === 3000 ? "" : "/api"}`)
-          setApiEndpoint(`http://127.0.0.1:8000`)
+        setApiEndpoint(`${window.location.origin}${window.location.port === 3000 ? "" : "/api"}`)
+        //  setApiEndpoint(`http://127.0.0.1:8000`)
 
     }, []);
 
