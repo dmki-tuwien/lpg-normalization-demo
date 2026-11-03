@@ -79,7 +79,7 @@ export default function Home() {
     const [apiEndpoint, setApiEndpoint] = useState<string>("");
 
     useEffect(() => {
-        setApiEndpoint(`${window.location.protocol}//${window.location.hostname}:${window.location.port === "3000" ? "8001" : "/api"}`)
+        setApiEndpoint(`${window.location.protocol}//${window.location.hostname}:${window.location.port === "3000" ? "8001" : `${window.location.port}/api`}`)
 
         const WS_PROTOCOL = window.location.protocol === "https:" ? "wss:" : "ws:";
         const LOG_WS_URL = `${WS_PROTOCOL}//${window.location.hostname}:${window.location.port === "3000" ? "8001" : window.location.port}/ws/log`;
