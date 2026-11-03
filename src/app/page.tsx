@@ -1,15 +1,9 @@
 'use client'
 import {
-    Alignment,
-    AnchorButton,
-    Button, Card, H3, H4, H5, Icon, Label, Link, MenuItem, MenuDivider, Menu,
-    Navbar,
-    NavbarDivider,
-    NavbarGroup,
-    NavbarHeading, SegmentedControl, Text,
+    Button, Card, H3, H4, H5, Icon, Label, Link, MenuItem, MenuDivider, Menu, SegmentedControl, Text,
     TextArea, Tooltip, Dialog, DialogBody, DialogFooter, ButtonGroup
 } from "@blueprintjs/core";
-import {ItemListRenderer, Select} from "@blueprintjs/select";
+import {Select} from "@blueprintjs/select";
 import CytoscapeComponent from 'react-cytoscapejs';
 import cytoscape from 'cytoscape';
 import cola from 'cytoscape-cola';
@@ -17,11 +11,11 @@ import automove from 'cytoscape-automove';
 import avsdf from 'cytoscape-avsdf';
 import fcose from 'cytoscape-fcose';
 import { BarChart } from '@mui/x-charts/BarChart';
-import logo from '../../public/logo.png';
-
+import NavBar from "@/app/components/navbar";
 
 import {useEffect, useRef, useState} from "react";
-import Image from "next/image";
+import {STRINGS} from "@/app/strings";
+import LogDialog from "@/app/components/logDialog";
 
 cytoscape.use(cola);
 cytoscape.use(avsdf);
@@ -65,6 +59,9 @@ export default function Home() {
     const [selectedPerDepMetric, setSelectedPerDepMetric] = useState<Dependency>({name: "", category: "", metrics: {}});
    // const [s]
 
+    const [showLogs, setShowLogs] = useState(false);
+    const [logs, setLogs] = useState<string[]>([]);
+
     const [availableScenarios, setAvailableScenarios] = useState([]);
     const [scenario, setScenario] = useState("");
     const [isLoadingScenario, setIsLoadingScenario] = useState(false);
@@ -83,9 +80,36 @@ export default function Home() {
 
     useEffect(() => {
         setApiEndpoint(`${window.location.origin}${window.location.port === 3000 ? "" : "/api"}`)
-        //  setApiEndpoint(`http://127.0.0.1:8000`)
+        setApiEndpoint(`http://127.0.0.1:8001`)
+
+        const WS_PROTOCOL = window.location.protocol === "https:" ? "wss:" : "ws:";
+        const LOG_WS_URL = `${WS_PROTOCOL}//${window.location.hostname}:8001/ws/log`;
+        const logSocket = new WebSocket(LOG_WS_URL);
+
+        logSocket.onopen = () => {
+           // setStatus("open");
+        };
+
+        logSocket.onmessage = (event: MessageEvent<string>) => {
+            setLogs((prev) => [...prev, event.data]);
+        };
+
+        logSocket.onerror = () => {
+         //   setStatus("error");
+        };
+
+        logSocket.onclose = () => {
+         //   setStatus("closed");
+        };
+
+        // Cleanup: close connection when the component unmounts
+        return () => {
+            logSocket.close();
+        };
 
     }, []);
+
+
 
     useEffect(() => {
         const fetchScenarios = async () => {
@@ -644,21 +668,9 @@ export default function Home() {
 
     return (
       <div>
-        <nav>
-            <Navbar fixedToTop>
-                <NavbarGroup align={Alignment.START}>
-                    <Image src={logo} alt={"The logo of GraNa-GraNo: A piece of cheese"} width={23} height={23} style={{marginRight: "0.6em"}}></Image>
-                    <NavbarHeading>🌾  GraNa-GraNo</NavbarHeading>
-                    <NavbarDivider/>
-                    <Button className="bp6-minimal" icon="reset" text="Reset" type="reset" onClick={() => reset()} /><Tooltip content="Resets Neo4j, Memgraph, and this application."><Icon icon="small-info-sign" />
-                </Tooltip>
-                </NavbarGroup>
-                <NavbarGroup align={Alignment.END}>
-                    <AnchorButton className="bp6-minimal" endIcon="share" text="Open documentation" href="https://dmki-tuwien.github.io/grana-grano" target="_blank"/>
-                </NavbarGroup>
-            </Navbar>
-        </nav>
+        <NavBar onReset={reset} setShowLogs={setShowLogs}/>
         <main>
+            <LogDialog logs={logs} shown={showLogs} setShown={setShowLogs}/>
             <div className="wrapper" id="scenarios">
                 <Card>
                     <H3>Configuration</H3>
@@ -1077,7 +1089,7 @@ export default function Home() {
             </div>
         </main>
           <footer>
-              ©&nbsp;2026&nbsp;-&nbsp;
+              ©&nbsp;{STRINGS.common.year}&nbsp;-&nbsp;
               <a href={"https://johannes.schrott.onl"} target={"__blank"}>Johannes Schrott</a>,&nbsp;
               <a href={"https://dmki-tuwien.github.io"} target={"__blank"}>DMKI Lab</a>,&nbsp;
               <a href={"https://tuwien.ac.at"} target={"__blank"}>TU Wien</a>
