@@ -82,7 +82,7 @@ export default function Home() {
         setApiEndpoint(`${window.location.protocol}//${window.location.hostname}:${window.location.port === "3000" ? "8001" : `${window.location.port}/api`}`)
 
         const WS_PROTOCOL = window.location.protocol === "https:" ? "wss:" : "ws:";
-        const LOG_WS_URL = `${WS_PROTOCOL}//${window.location.hostname}:${window.location.port === "3000" ? "8001" : window.location.port}/ws/log`;
+        const LOG_WS_URL = `${WS_PROTOCOL}//${window.location.hostname}:${window.location.port === "3000" ? "8001" : `${window.location.port}/api`}/ws/log`;
         const logSocket = new WebSocket(LOG_WS_URL);
 
         logSocket.onopen = () => {
