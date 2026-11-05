@@ -1,7 +1,7 @@
 'use client'
 import {
     Button, Card, H3, H4, H5, Icon, Label, Link, MenuItem, MenuDivider, Menu, SegmentedControl, Text,
-    TextArea, Tooltip, Dialog, DialogBody, DialogFooter, ButtonGroup
+    TextArea, Tooltip, Dialog, DialogBody, DialogFooter, ButtonGroup, Alert
 } from "@blueprintjs/core";
 import {Select} from "@blueprintjs/select";
 import CytoscapeComponent from 'react-cytoscapejs';
@@ -16,6 +16,9 @@ import NavBar from "@/app/components/navbar";
 import {useEffect, useRef, useState} from "react";
 import {STRINGS} from "@/app/strings";
 import LogDialog from "@/app/components/logDialog";
+import SettingsDialog from "@/app/components/settingsDialog";
+import OnboardingDialog from "@/app/components/onboardingDialog";
+import {prettyDep} from "@/app/helpers";
 
 cytoscape.use(cola);
 cytoscape.use(avsdf);
@@ -28,28 +31,15 @@ interface Dependency {
     metrics: {[key: string]: number};
 }
 
-function prettyDep(text: string): string {
-    const arrowMap: Record<string, string> = {
-        '->': '→',
-        '<-': '←',
-        '=>': ' ⇒ ',
-        '-': '-',
-        '::': ' :: ',
-        ':': ' : ',
-        '&': ' & ',
-        ',': ' , '
-    };
 
-    return text.replace(/->|<-|=>|-|::|:|&|,/g, (match) => arrowMap[match]);
-}
 
 export default function Home() {
     const [database, setDatabase] = useState("neo4j");
     const [method, setMethod] = useState("graph-native");
 
 
-    const [dependencies, setDependencies] = useState([]);
-    const [minCov, setMinCov] = useState([]);
+    const [dependencies, setDependencies] = useState<string[]>([]);
+    const [minCov, setMinCov] = useState<string[]>([]);
 
     const [perGraphMetricsAfter, setPerGraphMetricsAfter] = useState<{[key: string]: number}>({});
     const [perGraphMetricsBefore, setPerGraphMetricsBefore] = useState<{[key: string]: number}>({});
@@ -57,15 +47,35 @@ export default function Home() {
     const [perDepMetricsAfter, setPerDepMetricsAfter] = useState<Array<Dependency>>([]);
     const [perDepMetricsBefore, setPerDepMetricsBefore] = useState<Array<Dependency>>([]);
     const [selectedPerDepMetric, setSelectedPerDepMetric] = useState<Dependency>({name: "", category: "", metrics: {}});
-   // const [s]
 
-    const [showLogs, setShowLogs] = useState(false);
+    // Logs
+    const [showLogs, setShowLogs] = useState<boolean>(false);
     const [logs, setLogs] = useState<string[]>([]);
 
+    // Settings
+    const [showSettings, setShowSettings] = useState<boolean>(false);
+    const [useLLMs, setUseLLMs] = useState<boolean>(false);
+    const [llmAPIKey, setLlmAPIKey] = useState<string>("");
+    const [llmAPIModel, setLlmAPIModel] = useState<string>("");
+    const [llmApiEndpointUrl, setLlmApiEndpointUrl] = useState<string>("")
+
+    // Warning
+    const [showWarning, setShowWarning] = useState<boolean>(false);
+    const [warning, setWarning] = useState<string>("");
+
+    // Error
+    const [showError, setShowError] = useState<boolean>(false);
+    const [error, setError] = useState<string>("");
+
+    // Onboarding
+    const [showOnboarding, setShowOnboarding] = useState<boolean>(true);
+
+    // Scenario
+    const [customScenario, setCustomScenario] = useState<boolean>(false);
     const [availableScenarios, setAvailableScenarios] = useState([]);
     const [scenario, setScenario] = useState("");
-    const [isLoadingScenario, setIsLoadingScenario] = useState(false);
-    const [loadedScenario, setLoadedScenario] = useState(false);
+    const [isLoadingScenario, setIsLoadingScenario] = useState<boolean>(false);
+    const [loadedScenario, setLoadedScenario] = useState<boolean>(false);
 
     const [isNormalizing, setIsNormalizing] = useState(false);
     const [hasBeenNormalized, setHasBeenNormalized] = useState(false);
@@ -78,11 +88,12 @@ export default function Home() {
 
     const [apiEndpoint, setApiEndpoint] = useState<string>("");
 
+    // Connect to API
     useEffect(() => {
         setApiEndpoint(`${window.location.protocol}//${window.location.hostname}:${window.location.port === "3000" ? "8001" : `${window.location.port}/api`}`)
 
-        const WS_PROTOCOL = window.location.protocol === "https:" ? "wss:" : "ws:";
-        const LOG_WS_URL = `${WS_PROTOCOL}//${window.location.hostname}:${window.location.port === "3000" ? "8001" : `${window.location.port}/api`}/ws/log`;
+        const WS_PROTOCOL: "wss:"|"ws:" = window.location.protocol === "https:" ? "wss:" : "ws:";
+        const LOG_WS_URL: string = `${WS_PROTOCOL}//${window.location.hostname}:${window.location.port === "3000" ? "8001" : `${window.location.port}/api`}/ws/log`;
         const logSocket = new WebSocket(LOG_WS_URL);
 
         logSocket.onopen = () => {
@@ -91,6 +102,13 @@ export default function Home() {
 
         logSocket.onmessage = (event: MessageEvent<string>) => {
             setLogs((prev) => [...prev, event.data]);
+            if (event.data.includes("ERROR")) {
+                setError(event.data)
+                setShowError(true);
+            } else if (event.data.includes("WARNING")) {
+                setWarning(event.data)
+                setShowWarning(true);
+            }
         };
 
         logSocket.onerror = () => {
@@ -124,7 +142,7 @@ export default function Home() {
                 }));
 
                 setAvailableScenarios(options);
-                setScenario(options[0]["value"]);
+            //    setScenario(options[0]["value"]);
 
             } catch (error) {
                 console.error("Error fetching scenarios:", error);
@@ -667,119 +685,31 @@ export default function Home() {
 
     return (
       <div>
-        <NavBar onReset={reset} setShowLogs={setShowLogs}/>
+        <NavBar onReset={reset} setShowLogs={setShowLogs} setShowSettings={setShowSettings}/>
         <main>
+            <OnboardingDialog shown={showOnboarding}
+                              setShown={setShowOnboarding}
+                              database={database}
+                              setDatabase={setDatabase}
+                              customScenario={customScenario}
+                              setCustomScenario={setCustomScenario}
+                              minCov={minCov}
+                              setMinCov={setMinCov}
+                              setDependencies={setDependencies}
+                              availableScenarios={availableScenarios}
+                              setScenario={setScenario}
+                              scenario={scenario}
+                              loadScenario={load_scenario}
+            />
             <LogDialog logs={logs} shown={showLogs} setShown={setShowLogs}/>
+            <SettingsDialog useLLMs={useLLMs} setUseLLMs={setUseLLMs} llmAPIKey={llmAPIKey} setLlmAPIKey={setLlmAPIKey} llmAPIModel={llmAPIModel} setLlmAPIModel={setLlmAPIModel} llmApiEndpointUrl={llmApiEndpointUrl} setLLMAPIEndpointUrl={setLlmApiEndpointUrl} shown={showSettings} setShown={setShowSettings}/>
+            <Alert intent={"warning"} icon="warning-sign" isOpen={showWarning} onConfirm={()=>setShowWarning(!showWarning)}>{warning}</Alert>
+            <Alert intent={"danger"} icon="error" confirmButtonText={STRINGS.alert.errorButton} isOpen={showError} onConfirm={()=>setShowError(!showError)} onClosed={()=>window.location.reload()}>{error}</Alert>
+
             <div className="wrapper" id="scenarios">
                 <Card>
                     <H3>Configuration</H3>
-                    <Label><div style={{width: "fit-content", display: 'flex', alignItems: 'center'}}>
-                        Normalization method
-                        <span>&nbsp;</span>
-                        <Tooltip content="External link: Details on the available normalization methods"><Link href="https://dmki-tuwien.github.io/grana-grano/methods" target="_blank"> <Icon icon="share" size={12}/> </Link></Tooltip>
-                    </div>
-                        <SegmentedControl
-                            id="select-method"
-                            options={[
-                                {
-                                    label: "Graph-Native",
-                                    value: "graph-native",
-                                },
-                                {
-                                    label: "L:P",
-                                    value: "lp",
-                                },
-                                {
-                                    label: "Structural",
-                                    value: "structural",
-                                },
-                            ]}
-                            defaultValue={method}
-                            disabled={isLoadingScenario || loadedScenario}
-                            fill={true}
-                            onValueChange={(newValue) => setMethod(newValue)}
-                        />
-                    </Label>
 
-                    <Label>Graph store
-                    <SegmentedControl
-                        id="select-database"
-                        options={[
-                            {
-                                label: "Neo4j",
-                                value: "neo4j",
-                            },
-                            {
-                                label: "Memgraph",
-                                value: "memgraph",
-                            },
-                        ]}
-                        defaultValue={database}
-                        disabled={isLoadingScenario || loadedScenario}
-                        fill={true}
-                        onValueChange={(newValue) => setDatabase(newValue)}
-                    />
-                    </Label>
-
-                    <div>
-                        <Label>
-                            <div style={{width: "fit-content", display: 'flex', alignItems: 'center'}}>
-                                <Tooltip content="A normalization scenario combines a graph loaded into a graph store with a set of dependencies.">
-                                    <span>Scenario <Icon icon="small-info-sign" />
-                                    </span>
-                                </Tooltip>
-                                <span>&nbsp;</span>
-                                <Tooltip content="External link: Details on the available scenarios"><Link href="https://dmki-tuwien.github.io/grana-grano/scenarios" target="_blank"> <Icon icon="share" size={12}/> </Link></Tooltip>
-                            </div>
-                            <Select
-                                filterable={false}
-                                disabled={isLoadingScenario || loadedScenario}
-                                fill={true}
-                                items={availableScenarios}
-                                itemRenderer={(scen, { handleClick }) => (
-                                    <MenuItem
-                                        active={scenario === scen.value}
-                                        key={scen.value}
-                                        onClick={handleClick}
-                                        text={scen.label}
-                                    />
-                                )}
-                                popoverProps={{
-                                    placement: "bottom",
-                                }}
-                                itemListRenderer={({ items, itemsParentRef, renderItem }) => {
-                                    let lastCategory = "";
-                                    let menuItems = [];
-                                    if (items.length > 0) {
-                                        menuItems = items.map((scen, index) => {
-                                            const elements = [];
-
-                                            // If category changes, push a Divider/Header
-                                            if (scen.category !== lastCategory) {
-                                                elements.push(
-                                                    <MenuDivider key={`header-${scen.category}`} title={scen.category} />
-                                                );
-                                                lastCategory = scen.category;
-                                            }
-
-                                            elements.push(renderItem(scen, index));
-                                            return elements;
-                                        });
-                                    }
-
-
-                                    return <Menu ulRef={itemsParentRef}>{menuItems}</Menu>;
-                                }}
-                                onItemSelect={(scen) => setScenario(scen.value)}
-                                itemsEqual="name"               >
-                                <Button fill={true}
-                                        disabled={isLoadingScenario || loadedScenario}
-                                        alignText={"left"} text={<Text ellipsize={true} tagName="div" style={{ maxWidth: "310px" }}>{availableScenarios.find(s => s.value === scenario)?.label || "Loading scenarios …"}</Text>} endIcon="double-caret-vertical"></Button>
-                            </Select>
-                        </Label>
-                    </div>
-                    <Button id="button-load" icon="import" fill={true} loading={isLoadingScenario} disabled={loadedScenario} onClick={() => load_scenario()}>Load</Button>
-                    <br/>
                     <div hidden={!loadedScenario} >
                     <Button  icon="play" fill={true} disabled={hasBeenNormalized} loading={isNormalizing} text="Normalize" onClick={() => normalize()} />
                     </div>
@@ -811,8 +741,8 @@ export default function Home() {
                         <Button onClick={() => setDependencyDialogOpen(true)} icon={"edit"} disabled={hasBeenNormalized}>Edit dependencies</Button>
                         <Dialog title="Edit dependencies" icon="edit" isOpen={dependencyDialogOpen} onClose={()=>setDependencyDialogOpen(false)} isCloseButtonShown={false}>
                             <DialogBody>
-                                <Label>Minimal Cover used for normalization
-                                    <TextArea style={{width: "100%", height: "10em"}} disabled={hasBeenNormalized || isNormalizing} value={minCov.join("\n")} onChange={(e) => {setMinCov(e.currentTarget.value.split("\n")); setDependencies(e.currentTarget.value.split("\n"))}}></TextArea></Label>
+                                {/*<Label>Minimal Cover used for normalization*/}
+                                {/*    <TextArea style={{width: "100%", height: "10em"}} disabled={hasBeenNormalized || isNormalizing} </Label>*/}
                             </DialogBody>
                             <DialogFooter actions={<Button intent="primary" text="Close" onClick={()=>setDependencyDialogOpen(false)} />} />
 
@@ -913,49 +843,49 @@ export default function Home() {
                     <div>
                         <Label>Dependency
                         <div style={{ position: "relative" }}>
-                        <Select<Dependency>
-                            filterable={false}
-                            fill={true}
-                            items={perDepMetricsBefore.concat(perDepMetricsAfter)}
-                            itemRenderer={(dependency, { handleClick }) => (
-                                <MenuItem
-                                    active={selectedPerDepMetric?.name === dependency.name}
-                                    key={dependency.name}
-                                    onClick={handleClick}
-                                    text={prettyDep(dependency.name)}
-                                />
-                            )}
-                            popoverProps={{
-                                placement: "bottom",
-                            }}
-                            itemListRenderer={({ items, itemsParentRef, renderItem }) => {
-                                let lastCategory = "";
-                                let menuItems = [];
-                                if (items.length > 0) {
-                                    menuItems = items.map((dependency, index) => {
-                                        const elements = [];
+                        {/*<Select<Dependency>*/}
+                        {/*    filterable={false}*/}
+                        {/*    fill={true}*/}
+                        {/*    items={perDepMetricsBefore.concat(perDepMetricsAfter)}*/}
+                        {/*    itemRenderer={(dependency, { handleClick }) => (*/}
+                        {/*        <MenuItem*/}
+                        {/*            active={selectedPerDepMetric?.name === dependency.name}*/}
+                        {/*            key={dependency.name}*/}
+                        {/*            onClick={handleClick}*/}
+                        {/*            text={prettyDep(dependency.name)}*/}
+                        {/*        />*/}
+                        {/*    )}*/}
+                        {/*    popoverProps={{*/}
+                        {/*        placement: "bottom",*/}
+                        {/*    }}*/}
+                        {/*    itemListRenderer={({ items, itemsParentRef, renderItem }) => {*/}
+                        {/*        let lastCategory = "";*/}
+                        {/*        let menuItems = [];*/}
+                        {/*        if (items.length > 0) {*/}
+                        {/*            menuItems = items.map((dependency, index) => {*/}
+                        {/*                const elements = [];*/}
 
-                                        // If category changes, push a Divider/Header
-                                        if (dependency.category !== lastCategory) {
-                                            elements.push(
-                                                <MenuDivider key={`header-${dependency.category}`} title={dependency.category} />
-                                            );
-                                            lastCategory = dependency.category;
-                                        }
+                        {/*                // If category changes, push a Divider/Header*/}
+                        {/*                if (dependency.category !== lastCategory) {*/}
+                        {/*                    elements.push(*/}
+                        {/*                        <MenuDivider key={`header-${dependency.category}`} title={dependency.category} />*/}
+                        {/*                    );*/}
+                        {/*                    lastCategory = dependency.category;*/}
+                        {/*                }*/}
 
-                                        elements.push(renderItem(dependency, index));
-                                        return elements;
-                                    });
-                                }
+                        {/*                elements.push(renderItem(dependency, index));*/}
+                        {/*                return elements;*/}
+                        {/*            });*/}
+                        {/*        }*/}
 
 
-                                return <Menu ulRef={itemsParentRef}>{menuItems}</Menu>;
-                            }}
-                            onItemSelect={(dependency) => setSelectedPerDepMetric(dependency)}
-                            itemsEqual="name"
-                        >
-                            <Button fill={true} alignText={"left"} text={<Text ellipsize={true} tagName="div" style={{ maxWidth: "310px" }}>{selectedPerDepMetric ? prettyDep(selectedPerDepMetric.name) : ""}</Text>} endIcon="double-caret-vertical"></Button>
-                        </Select>
+                        {/*        return <Menu ulRef={itemsParentRef}>{menuItems}</Menu>;*/}
+                        {/*    }}*/}
+                        {/*    onItemSelect={(dependency) => setSelectedPerDepMetric(dependency)}*/}
+                        {/*    itemsEqual="name"*/}
+                        {/*>*/}
+                        {/*    <Button fill={true} alignText={"left"} text={<Text ellipsize={true} tagName="div" style={{ maxWidth: "310px" }}>{selectedPerDepMetric ? prettyDep(selectedPerDepMetric.name) : ""}</Text>} endIcon="double-caret-vertical"></Button>*/}
+                        {/*</Select>*/}
                         </div>
                         </Label>
                         <BarChart

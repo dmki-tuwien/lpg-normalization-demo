@@ -11,20 +11,21 @@
   "dependencies": {
     "@blueprintjs/core": "^6.7.0",
     "@blueprintjs/select": "^6.1.0",
-    "next": "16.1.6",
-    "react": "^18",
-    "react-dom": "^18",
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@mui/material": "^7.3.9",
+    "@mui/x-charts": "^8.0.0",
+    "@xyflow/react": "^12.12.1",
     "cytoscape": "~3.33",
     "cytoscape-automove": "^1.10.3",
     "cytoscape-avsdf": "~1.0.0",
     "cytoscape-cola": "^2.5.1",
     "cytoscape-fcose": "^2.2.0",
+    "next": "^16.4.5",
+    "react": "~18",
     "react-cytoscapejs": "~2.0",
-    "@mui/x-charts": "^8.0.0",
-    "@mui/material": "^7.3.9",
-    "@emotion/react": "^11.14.0",
-    "@emotion/styled": "^11.14.1"
-
+    "react-dom": "~18",
+    "react-compiler-runtime": "1.0.0"
   },
   "devDependencies": {
     "@types/node": "^20",

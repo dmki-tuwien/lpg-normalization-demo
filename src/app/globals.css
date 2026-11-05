@@ -76,3 +76,13 @@ footer {
   position: absolute;
   top: 40px;
 }
+
+
+.inline-popover-override {
+  position: absolute !important;
+  top: 100% !important; /* Positions it right below the input box */
+  left: 0 !important;
+  transform: none !important;
+  width: 100% !important;
+  z-index: 50 !important;
+}
