@@ -34,7 +34,7 @@ export default function NavBar({ onReset, setShowLogs, setShowSettings }: NavBar
                     <NavbarHeading>{STRINGS.common.appName}</NavbarHeading>
                     <NavbarDivider/>
                     <Button className="bp6-minimal" icon="reset" text={STRINGS.navbar.reset} type="reset" onClick={onReset} />
-                    <Tooltip content={STRINGS.navbar.resetTooltip}><Icon icon="small-info-sign" /></Tooltip>
+                    <Tooltip lazy={true} usePortal={false} content={STRINGS.navbar.resetTooltip}><Icon icon="small-info-sign" /></Tooltip>
                 </NavbarGroup>
                 <NavbarGroup align={Alignment.END}>
                     <Button className="bp6-minimal" icon="settings" text={STRINGS.navbar.settings}  onClick={() => setShowSettings(true)} />

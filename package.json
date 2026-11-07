@@ -21,6 +21,7 @@
     "cytoscape-avsdf": "~1.0.0",
     "cytoscape-cola": "^2.5.1",
     "cytoscape-fcose": "^2.2.0",
+    "elkjs": "~0.12.1",
     "next": "^16.4.5",
     "react": "~18",
     "react-cytoscapejs": "~2.0",

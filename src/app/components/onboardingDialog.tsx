@@ -29,10 +29,12 @@ interface OnboardingDialogProps {
     setScenario: (val: string) => void;
     scenario: string;
     loadScenario: () => Promise<void>;
+    customScenarioCypher: string;
+    setCustomScenarioCypher: (val: string) => void;
 }
 
 
-export default function OnboardingDialog({  shown, setShown, database, setDatabase, customScenario, setCustomScenario, minCov, setMinCov, setDependencies, availableScenarios, setScenario, scenario, loadScenario }: OnboardingDialogProps) {
+export default function OnboardingDialog({  shown, setShown, database, setDatabase, customScenario, setCustomScenario, minCov, setMinCov, setDependencies, availableScenarios, setScenario, scenario, loadScenario, customScenarioCypher, setCustomScenarioCypher }: OnboardingDialogProps) {
     const scenariosDropdownOptions = [];
     let lastCategory = "";
     scenariosDropdownOptions.push(
@@ -41,7 +43,7 @@ export default function OnboardingDialog({  shown, setShown, database, setDataba
     availableScenarios.forEach((scenario) => {
         if (scenario.category !== lastCategory) {
             scenariosDropdownOptions.push(
-                <optgroup label={scenario.category} />
+                <optgroup key={scenario.category} label={scenario.category} />
             );
             lastCategory = scenario.category;
         }
@@ -51,12 +53,18 @@ export default function OnboardingDialog({  shown, setShown, database, setDataba
     });
 
     return (
-        <MultistepDialog canOutsideClickClose={false} canEscapeKeyClose={false} isCloseButtonShown={false} isOpen={shown} finalButtonProps={{
-            text: "Load scenario",
-            intent: "primary",
-            icon: "tick",
-            onClick: ()=>{setShown(!shown); loadScenario();},
-        }}>
+        <MultistepDialog
+            canOutsideClickClose={false}
+            canEscapeKeyClose={false}
+            isCloseButtonShown={false}
+            isOpen={shown}
+            finalButtonProps={{
+                text: "Load scenario",
+                intent: "primary",
+                icon: "tick",
+                onClick: ()=>{setShown(!shown); loadScenario();},
+            }}
+        >
             <DialogStep
                 id="welcome"
                 title={STRINGS.onboarding.welcomeShort}
@@ -64,7 +72,7 @@ export default function OnboardingDialog({  shown, setShown, database, setDataba
                     <div className={Classes.DIALOG_BODY} style={{ height: "320px"}}>
                         <Card>
                         <div style={{textAlign: "center", marginBottom: 60}}>
-                            <Image src={logo} alt={"dd"} height={80}/>
+                            <Image src={logo} alt={"dd"} height={80} loading={"eager"}/>
                             <p style={{fontSize: "30px"}}>{STRINGS.onboarding.welcomeLong}</p>
                             <p>ADD DESCRIPTIVE TEXT</p>
                         </div>
@@ -91,6 +99,9 @@ export default function OnboardingDialog({  shown, setShown, database, setDataba
                     </div>
 
                 }
+                nextButtonProps= {{
+                    disabled: !(database=="neo4j" || database=="memgraph"),
+                }}
             />
             <DialogStep
                 id="scenario"
@@ -126,7 +137,7 @@ export default function OnboardingDialog({  shown, setShown, database, setDataba
                             :
                                 <div>
                                     <Label>Cypher statements for loading an LPG
-                                <TextArea fill={true}></TextArea>
+                                <TextArea id={"customScenarioCypher"} fill={true} value={customScenarioCypher} onChange={(e) => {setCustomScenarioCypher(e.currentTarget.value)}}></TextArea>
                                     </Label>
 
                                 </div>
@@ -142,6 +153,9 @@ export default function OnboardingDialog({  shown, setShown, database, setDataba
                         </Card>
                     </div>
                 }
+                nextButtonProps= {{
+                    disabled: (!customScenario && scenario == "") || (customScenario && customScenarioCypher == ""),
+                }}
             />
             <DialogStep
                 id="summary"
@@ -151,11 +165,14 @@ export default function OnboardingDialog({  shown, setShown, database, setDataba
                         <p>You selected to load
                             {customScenario ? <span> a <b>custom scenario</b></span> : <span> the scenario <b>{availableScenarios.find((s) => s.value === scenario)?.label}</b></span>} into <b>{database == "neo4j" ? "Neo4j" : "Memgraph"}</b>.</p>
                         <p style={{marginTop: "25px"}}>The following <b>dependencies</b> will be considered in the normalization scenario:</p>
-                        <ul>
-                        {minCov.map((dep, _) => (
-                            <li key={dep}>{prettyDep(dep)}</li>
-                        ))}
-                        </ul>
+                        {minCov.length == 0 ?
+                            <p><i>No dependencies provided.</i></p> :
+                            <ul>
+                                {minCov.map((dep, _) => (
+                                    <li key={dep}>{prettyDep(dep)}</li>
+                                ))}
+                            </ul>
+                                }
                     </div>
                 }
             />
