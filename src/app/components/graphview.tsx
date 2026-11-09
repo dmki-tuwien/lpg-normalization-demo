@@ -6,8 +6,6 @@ import CytoscapeComponent from "react-cytoscapejs";
 export default function GraphView ({ nodes = [], edges = [], deps = [], hasBeenNormalized })  {
     // 1. Define your graph data (Elements)
     let elements = null;
-    console.log(deps);
-    console.log("bäs")
 
     if (nodes.length < 50) {
         let cy_nodes = nodes.map(node => ({
@@ -76,22 +74,22 @@ export default function GraphView ({ nodes = [], edges = [], deps = [], hasBeenN
                     classes: 'property'
                 });
             });
-            console.log(entry);
             return entry;
         });
 
-        deps.forEach((edge) => {
-            elements.push({
-                data: {
-                    id: "DEP" + String(edge[0])+ String(edge[1]),
-                    source: String(edge[0]),
-                    target: String(edge[1]),
-                    type: "DEP",
-                },
-                classes: "dep"
-            });
-        });
-
+        if (typeof deps?.[Symbol.iterator] === "function") {
+            for (const edge of deps) {
+                elements.push({
+                    data: {
+                        id: "DEP" + String(edge[0]) + String(edge[1]),
+                        source: String(edge[0]),
+                        target: String(edge[1]),
+                        type: "DEP",
+                    },
+                    classes: "dep"
+                });
+            }
+        }
 
 
         console.log(elements);

@@ -38,17 +38,17 @@ export default function SettingsDialog({ useLLMs, setUseLLMs, llmAPIKey, setLlmA
                     <div style={{marginBottom: "-10px", marginLeft: "-10px"}}><Switch id={"useLLms"} onChange={()=>setUseLLMs(!useLLMs)} defaultChecked={useLLMs}>{STRINGS.settings.useLLMs}</Switch></div>
                 }>
                     <div style={{margin: "10px"}}>
-                <FormGroup>
-                <Label>{STRINGS.settings.llmApiEndpoint}
-                    <InputGroup disabled={!useLLMs} defaultValue={llmApiEndpointUrl} onValueChange={(val)=>setLLMAPIEndpointUrl(val)}></InputGroup>
-                </Label>
-                <Label>{STRINGS.settings.llmApiModel}
-                    <InputGroup disabled={!useLLMs} defaultValue={llmAPIModel} onValueChange={(val)=>setLlmAPIModel(val)}></InputGroup>
-                </Label>
-                <Label>{STRINGS.settings.llmApiToken}
-                    <InputGroup disabled={!useLLMs} defaultValue={llmAPIKey} onValueChange={(val)=>setLlmAPIKey(val)}></InputGroup>
-                </Label>
-                </FormGroup>
+                        <FormGroup>
+                            <Label>{STRINGS.settings.llmApiEndpoint}
+                                <InputGroup disabled={!useLLMs} defaultValue={llmApiEndpointUrl} onValueChange={(val)=>setLLMAPIEndpointUrl(val)}></InputGroup>
+                            </Label>
+                            <Label>{STRINGS.settings.llmApiModel}
+                                <InputGroup disabled={!useLLMs} defaultValue={llmAPIModel} onValueChange={(val)=>setLlmAPIModel(val)}></InputGroup>
+                            </Label>
+                            <Label>{STRINGS.settings.llmApiToken}
+                                <InputGroup type={"password"} disabled={!useLLMs} defaultValue={llmAPIKey} onValueChange={(val)=>setLlmAPIKey(val)}></InputGroup>
+                            </Label>
+                        </FormGroup>
                     </div>
                 </Section>
             </DialogBody>

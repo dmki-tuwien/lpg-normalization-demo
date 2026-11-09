@@ -15,7 +15,7 @@ import {BarChart} from "@mui/x-charts/BarChart";
 import {Select} from "@blueprintjs/select";
 import {prettyDep} from "@/app/helpers";
 
-interface NavBarProps {
+interface SideBarProps {
     showMetrics: boolean
     setShowMetrics: (val: boolean) => void;
     loadedScenario: boolean;
@@ -24,6 +24,7 @@ interface NavBarProps {
     perDepMetricsAfter: never;
     selectedPerDepMetric: never;
     setSelectedPerDepMetric: (val: never) => void;
+    hasBeenNormalized: boolean;
 }
 
 /**
@@ -32,7 +33,7 @@ interface NavBarProps {
  * @param {Function} showLogs Callback function for the show logs button.
  * @return {JSX.Element} The rendered navigation bar component.
  */
-export default function SideBar({ showMetrics, setShowMetrics, loadedScenario, perGraphMetricsGraphData, perDepMetricsAfter, perDepMetricsBefore, selectedPerDepMetric }: NavBarProps) {
+export default function SideBar({ showMetrics, setShowMetrics, loadedScenario, perGraphMetricsGraphData, perDepMetricsAfter, perDepMetricsBefore, selectedPerDepMetric, hasBeenNormalized }: SideBarProps) {
     return (
 <aside>
     <SegmentedControl
@@ -68,6 +69,7 @@ export default function SideBar({ showMetrics, setShowMetrics, loadedScenario, p
                     label: "Metric",
                     dataKey: 'label',
                     valueFormatter: (label, context) => {
+                     //   console.log(perGraphMetricsGraphData)
                         if (context.location === 'tick') {
                             if (label.length > 9) {
                                 return `${label.slice(0, 7)}…`
@@ -148,8 +150,9 @@ export default function SideBar({ showMetrics, setShowMetrics, loadedScenario, p
                                     });
                                 }
 
-
-                                return <Menu ulRef={itemsParentRef}>{menuItems}</Menu>;
+                                if (menuItems.length > 0) {
+                                    return <Menu ulRef={itemsParentRef}>{menuItems}</Menu>;
+                                }
                             }}
                             onItemSelect={(dependency) => setSelectedPerDepMetric(dependency)}
                             itemsEqual="name"
@@ -201,5 +204,26 @@ export default function SideBar({ showMetrics, setShowMetrics, loadedScenario, p
             </div>
         </div>
 
+    </div>
+    <div id="anomalies" hidden={!loadedScenario || showMetrics}  style={{paddingTop: "20px"}}>
+        <p>The dependencies listed below lead to anomalies.</p>
+        <p>Before normalization:</p>
+        {perDepMetricsBefore.filter((m)=>m.metrics.MaxRedPot!=1||m.metrics.AvgRedPot!=1||m.metrics.Minimality!=1).length==0 ?
+            <ul><li><i>No anomalies present.</i></li></ul> :
+        <ul>
+            {perDepMetricsBefore.filter((m)=>m.metrics.MaxRedPot!=1||m.metrics.AvgRedPot!=1||m.metrics.Minimality!=1).map((m)=><li key={`anomalyBefore${m.name}`}>{m.name}</li>)}
+        </ul>
+        }
+
+        <div hidden={!hasBeenNormalized}>
+            <p>After normalization:</p>
+        {perDepMetricsAfter.filter((m)=>m.metrics.MaxRedPot!=1||m.metrics.AvgRedPot!=1||m.metrics.Minimality!=1).length==0 ?
+            <ul><li><i>No anomalies present.</i></li></ul> :
+            <ul>
+                {perDepMetricsAfter.filter((m)=>m.metrics.MaxRedPot!=1||m.metrics.AvgRedPot!=1||m.metrics.Minimality!=1).map((m)=><li key={`anomalyBefore${m.name}`}>{m.name}</li>)}
+            </ul>
+        }
+        </div>
+        {console.log(perDepMetricsBefore.concat(perDepMetricsAfter))}
     </div>
 </aside>);}

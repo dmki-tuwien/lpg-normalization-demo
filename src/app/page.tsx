@@ -83,6 +83,7 @@ export default function Home() {
     const [isNormalizing, setIsNormalizing] = useState(false);
     const [hasBeenNormalized, setHasBeenNormalized] = useState(false);
     const [normalizationResult, setNormalizationResult] = useState([[],[]]);
+    const [normalizationType, setNormalizationType] = useState<string>("graph-native")
 
     const [beforeVisualization, setBeforeVisualization] = useState(<div/>);
     const [afterVisualization, setAfterVisualization] = useState(<div/>);
@@ -173,7 +174,7 @@ export default function Home() {
             }
         };
 
-        if (!hasBeenNormalized && scenario !== "") {fetchDependencies()}
+        if (!hasBeenNormalized && scenario !== "" && dependencies.length==0) {fetchDependencies()}
 
         const fetchMinimalCover = async () => {
             try {
@@ -190,7 +191,7 @@ export default function Home() {
             }
         };
 
-        if (!hasBeenNormalized && scenario !== "") {fetchMinimalCover()}
+        if (!hasBeenNormalized && scenario !== "" && minCov.length == 0) {fetchMinimalCover()}
     }, [database, scenario, hasBeenNormalized, loadedScenario]);
 
     // Fetch metrics
@@ -318,7 +319,7 @@ export default function Home() {
 
     const normalize = async () => {
         setIsNormalizing(true);
-        const response = await fetch(`${apiEndpoint}/${database}/normalize?method=${method}`, { method: "POST", headers: {
+        const response = await fetch(`${apiEndpoint}/${database}/normalize?method=${normalizationType}&useLlm=${useLLMs}&llmUrl=${llmApiEndpointUrl}&llmModel=${llmAPIModel}&llmKey=${llmAPIKey}`, { method: "POST", headers: {
                 "Content-Type": "application/json",
             }, body: JSON.stringify(minCov) })
         const data = await response.json();
@@ -348,6 +349,9 @@ export default function Home() {
         setHasBeenNormalized(false);
         setNormalizationResult([[],[]]);
         await fetch(`${apiEndpoint}/reset`, { method: "POST" });
+        if(!showError) {
+            window.location.reload();
+        }
     };
 
 
@@ -400,7 +404,11 @@ export default function Home() {
             </Alert>
 
             <div id={"before"}>
-                <div className={"deps"}>
+                {!loadedScenario ?
+                    <div id={"afterNormalizationText"}>
+                        Please load a scenario to get started.
+                    </div> :
+                    <div className={"deps"}>
                 <H4>Before Normalization</H4>
                 <Label><div style={{width: "fit-content", display: 'flex', alignItems: 'center'}}>
                     <Tooltip content="The original set of dependencies as provided by the definition of the selected scenario.">
@@ -419,14 +427,18 @@ export default function Home() {
 
                     </ul></Label>
                 </div>
+                }
+                {loadedScenario ?
                 <div className={"vis"} hidden={!loadedScenario}>
                      {beforeVisualization}
-                </div>
+                </div> :
+                <div/>
+                }
             </div>
             <div id={"normalizeControl"}>
                 <ButtonGroup>
                 <Button icon="play" fill={true} disabled={hasBeenNormalized || !loadedScenario} loading={isNormalizing} text="Normalize using" style={{width: '155px'}} onClick={() => normalize()} />
-                    <HTMLSelect disabled={hasBeenNormalized || !loadedScenario} style={{width:'245px'}}>
+                    <HTMLSelect defaultValue={normalizationType} disabled={hasBeenNormalized || !loadedScenario || isNormalizing} style={{width:'245px'}} onChange={(event) => setNormalizationType(event.currentTarget.value)}>
                         <option value={"graph-native"} label={"Graph-Native Normalization"}/>
                         <option value={"lp"} label={"L:P Normalization"}/>
                         <option value={"structural"} label={"Structural Normalization (EGNF)"}/>
@@ -446,12 +458,13 @@ export default function Home() {
                                         </span>
                             </Tooltip></div>
                                 <ul>
+                                    {(normalizationResult === undefined || normalizationResult[0] === undefined || normalizationResult[0].length == 0) ?
+                                        <li><i>None</i></li> :
 
-                                    {normalizationResult[0].map((dep, index) => (
+                                    normalizationResult[0].map((dep, index) => (
                                         <li key={index}>{prettyDep(dep)}</li>
-                                    ))}
-                                    { normalizationResult[0].length == 0 && <li><i>None</i></li> }
-
+                                    ))
+                                    }
                                 </ul></Label>
                             <Label><div style={{width: "fit-content", display: 'flex', alignItems: 'center'}}>
                                 <Tooltip content="Lists the transformations applied as part of the normalization process.">
@@ -462,8 +475,9 @@ export default function Home() {
                                 {/*<Tooltip content="External link: Definitions of the transformations that can be performed during normalization."><Link href="https://dmki-tuwien.github.io/" target="_blank"> <Icon icon="share" size={12}/> </Link></Tooltip>*/}
                             </div>
                                 <ul>
-
-                                    {normalizationResult[1].map((transf, index) => (
+                                    {(normalizationResult === undefined || normalizationResult[0] === undefined || normalizationResult[0].length == 0) ?
+                                        <li><i>None</i></li> :
+                                    normalizationResult[1].map((transf, index) => (
                                         <li key={index}>{transf}&nbsp;<Link href="https://dmki-tuwien.github.io/grana-grano/transformations" target="_blank"> <Icon icon="share" size={12}/> </Link></li>                                ))}
 
                                 </ul></Label>
@@ -487,7 +501,9 @@ export default function Home() {
                      perDepMetricsBefore={perDepMetricsBefore}
                      perDepMetricsAfter={perDepMetricsAfter}
                      selectedPerDepMetric={selectedPerDepMetric}
-                     setSelectedPerDepMetric={setSelectedPerDepMetric}/>
+                     setSelectedPerDepMetric={setSelectedPerDepMetric}
+                     hasBeenNormalized={hasBeenNormalized}
+            />
             <Footer/>
       </div>
   );
