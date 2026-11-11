@@ -1,7 +1,7 @@
 'use client'
 import {
     Button, Card, H3, H4, H5, Icon, Label, Link, MenuItem, MenuDivider, Menu, SegmentedControl, Text,
-    TextArea, Tooltip, Dialog, DialogBody, DialogFooter, ButtonGroup, Alert, HTMLSelect
+    TextArea, Tooltip, Dialog, DialogBody, DialogFooter, ButtonGroup, Alert, HTMLSelect, Spinner
 } from "@blueprintjs/core";
 import {Select} from "@blueprintjs/select";
 import CytoscapeComponent from 'react-cytoscapejs';
@@ -174,7 +174,7 @@ export default function Home() {
             }
         };
 
-        if (!hasBeenNormalized && scenario !== "" && dependencies.length==0) {fetchDependencies()}
+        if (!hasBeenNormalized && scenario !== "") {fetchDependencies()}
 
         const fetchMinimalCover = async () => {
             try {
@@ -191,7 +191,9 @@ export default function Home() {
             }
         };
 
-        if (!hasBeenNormalized && scenario !== "" && minCov.length == 0) {fetchMinimalCover()}
+        if (!hasBeenNormalized && scenario !== "") {fetchMinimalCover()}
+
+
     }, [database, scenario, hasBeenNormalized, loadedScenario]);
 
     // Fetch metrics
@@ -404,10 +406,14 @@ export default function Home() {
             </Alert>
 
             <div id={"before"}>
-                {!loadedScenario ?
+                {!loadedScenario && !isLoadingScenario ?
                     <div id={"afterNormalizationText"}>
                         Please load a scenario to get started.
                     </div> :
+                    isLoadingScenario ?
+                    <div id={"afterNormalizationText"}>
+                Loading scenario ... <Spinner/>
+            </div> :
                     <div className={"deps"}>
                 <H4>Before Normalization</H4>
                 <Label><div style={{width: "fit-content", display: 'flex', alignItems: 'center'}}>
@@ -428,6 +434,7 @@ export default function Home() {
                     </ul></Label>
                 </div>
                 }
+
                 {loadedScenario ?
                 <div className={"vis"} hidden={!loadedScenario}>
                      {beforeVisualization}
@@ -454,7 +461,7 @@ export default function Home() {
                         <div className={"deps"}>
                             <H4>After Normalization</H4>
                             <Label><div style={{width: "fit-content", display: 'flex', alignItems: 'center'}}><Tooltip content="As part of the normalization process, the dependencies of the minimal cover have been transformed.">
-                                        <span>Transformed dependencies <Icon icon="small-info-sign" />
+                                        <span>Dependencies after normalization <Icon icon="small-info-sign" />
                                         </span>
                             </Tooltip></div>
                                 <ul>
@@ -466,6 +473,8 @@ export default function Home() {
                                     ))
                                     }
                                 </ul></Label>
+
+                            {normalizationType != "structural" ?
                             <Label><div style={{width: "fit-content", display: 'flex', alignItems: 'center'}}>
                                 <Tooltip content="Lists the transformations applied as part of the normalization process.">
                                         <span>Applied transformations <Icon icon="small-info-sign" />
@@ -480,7 +489,9 @@ export default function Home() {
                                     normalizationResult[1].map((transf, index) => (
                                         <li key={index}>{transf}&nbsp;<Link href="https://dmki-tuwien.github.io/grana-grano/transformations" target="_blank"> <Icon icon="share" size={12}/> </Link></li>                                ))}
 
-                                </ul></Label>
+                                </ul></Label> :
+                                <span/>
+                            }
                             <p>Normalization took {normalizationResult[2]} seconds.</p>
                         </div>
                 }

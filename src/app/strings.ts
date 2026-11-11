@@ -29,6 +29,7 @@ export const STRINGS = {
     onboarding: {
         welcomeShort: "Welcome",
         welcomeLong: "Welcome to GraNa-GraNo!",
+        description: "Learn about the effects redundancies have on LPGs and how to resolve them.",
         loadScenario: "Load scenario",
         graphStoreLabel: "Choose a graph store:",
         scenarioType: "Select how you want to define a normalization scenario:",

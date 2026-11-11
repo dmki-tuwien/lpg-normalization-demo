@@ -74,7 +74,7 @@ export default function OnboardingDialog({  shown, setShown, database, setDataba
                         <div style={{textAlign: "center", marginBottom: 60}}>
                             <Image src={logo} alt={"dd"} height={80} loading={"eager"}/>
                             <p style={{fontSize: "30px"}}>{STRINGS.onboarding.welcomeLong}</p>
-                            <p>ADD DESCRIPTIVE TEXT</p>
+                            <p>{STRINGS.onboarding.description}</p>
                         </div>
 
                         <Label>{STRINGS.onboarding.graphStoreLabel}
@@ -136,8 +136,8 @@ export default function OnboardingDialog({  shown, setShown, database, setDataba
                                 </HTMLSelect></div>
                             :
                                 <div>
-                                    <Label>Cypher statements for loading an LPG
-                                <TextArea id={"customScenarioCypher"} fill={true} value={customScenarioCypher} onChange={(e) => {setCustomScenarioCypher(e.currentTarget.value)}}></TextArea>
+                                    <Label>Cypher statements for loading an LPG:
+                                <TextArea id={"customScenarioCypher"} fill={true} value={customScenarioCypher} placeholder={"CREATE (n:Label {prop: \"value\"})\n…"} onChange={(e) => {setCustomScenarioCypher(e.currentTarget.value)}}></TextArea>
                                     </Label>
 
                                 </div>
@@ -145,8 +145,9 @@ export default function OnboardingDialog({  shown, setShown, database, setDataba
                             </FormGroup>
                             {(!customScenario && minCov.length != 0) || customScenario ?
                             <FormGroup>
-                            <Label>Dependencies
-                            <TextArea id={"dependencies"} fill={true} value={minCov.join("\n")} onChange={(e) => {setMinCov(e.currentTarget.value.split("\n")); setDependencies(e.currentTarget.value.split("\n"))}}></TextArea>
+                            <Label>
+                                Dependencies: <Link href="https://dmki-tuwien.github.io/grana-grano/dependencies" target="_blank"><Icon  icon="share" size={12}/></Link>
+                                <TextArea id={"dependencies"} fill={true} value={minCov.join("\n")} onChange={(e) => {setMinCov(e.currentTarget.value.split("\n")); setDependencies(e.currentTarget.value.split("\n"))}}></TextArea>
                             </Label>
                             </FormGroup> : <span/>
                             }
